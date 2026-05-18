@@ -98,7 +98,7 @@ async function loadRoutineTasks() {
                 label.innerHTML = `
                     <input type="checkbox" name="routine-task" data-id="${task.id}" ${task.is_done ? 'checked' : ''}>
                     <span>${escapeHtml(task.task_name)}</span>
-                    <button class="delete-task-btn" data-id="${task.id}" data-type="routine">🗑️</button>
+                    <button class="delete-task-btn" data-id="${task.id}" data-type="routine"><img src="assets/Vector.svg" alt="delet"></button>
                 `;
                 container.appendChild(label);
             });
@@ -192,7 +192,7 @@ async function loadTodoTasks() {
                 label.innerHTML = `
                     <input type="checkbox" name="todo-task" data-id="${task.id}" ${task.is_done ? 'checked' : ''}>
                     <span>${escapeHtml(task.task_name)}</span>
-                    <button class="delete-task-btn" data-id="${task.id}" data-type="todo">🗑️</button>
+                    <button class="delete-task-btn" data-id="${task.id}" data-type="todo"><img src="assets/Vector.svg" alt="delet"></button>
                 `;
                 container.appendChild(label);
             });
@@ -283,7 +283,7 @@ async function loadMovies() {
                 label.innerHTML = `
                     <input type="checkbox" class="movie-checkbox" data-id="${movie.id}" ${movie.is_watched ? 'checked' : ''}>
                     <span>${escapeHtml(movie.movie_name)}</span>
-                    <button class="delete-movie-btn" data-id="${movie.id}">🗑️</button>
+                    <button class="delete-movie-btn" data-id="${movie.id}"><img src="assets/Vector.svg" alt="delet"></button>
                 `;
                 container.appendChild(label);
             });
@@ -374,7 +374,7 @@ async function loadBooks() {
                 label.innerHTML = `
                     <input type="checkbox" class="book-checkbox" data-id="${book.id}" ${book.is_read ? 'checked' : ''}>
                     <span>${escapeHtml(book.book_name)}</span>
-                    <button class="delete-book-btn" data-id="${book.id}">🗑️</button>
+                    <button class="delete-book-btn" data-id="${book.id}"><img src="assets/Vector.svg" alt="delet"></button>
                 `;
                 container.appendChild(label);
             });
