@@ -1,68 +1,51 @@
 <?php
-require_once 'config.php';
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+header('Content-Type: application/json; charset=utf-8');
+date_default_timezone_set('Asia/Tehran');
 
+// اتصال به دیتابیس
+$host = 'localhost';
+$dbname = 'routine_manager';
+$username = 'root';
+$password = '';
+
+try {
+    $pdo = new PDO("mysql:host=$host;dbname=$dbname;charset=utf8mb4", $username, $password);
+    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+} catch(PDOException $e) {
+    echo json_encode(['error' => 'Database connection failed: ' . $e->getMessage()]);
+    exit;
+}
+
+$userId = 1;
 $action = $_POST['action'] ?? $_GET['action'] ?? '';
 
+// ============================================
+// آمار
+// ============================================
 if ($action == 'get_stats') {
-    // دریافت آمار امروز
-    $today = date('Y-m-d');
-    $stmt = $pdo->prepare("SELECT * FROM daily_stats WHERE stat_date = ?");
-    $stmt->execute([$today]);
-    $stats = $stmt->fetch();
-    
-    if (!$stats) {
-        $stats = updateDailyStats($pdo);
-    }
-    
-    // دریافت تعداد کارهای روتین و Todo
-    $stmt = $pdo->query("SELECT COUNT(*) as total FROM routine_tasks");
-    $routineTotal = $stmt->fetch()['total'];
-    
-    $stmt = $pdo->query("SELECT COUNT(*) as total FROM todo_tasks");
-    $todoTotal = $stmt->fetch()['total'];
+    $stmt = $pdo->query("SELECT COUNT(*) as total, SUM(is_done) as done FROM routine_tasks");
+    $stats = $stmt->fetch(PDO::FETCH_ASSOC);
     
     echo json_encode([
         'success' => true,
-        'percentage' => $stats['percentage'],
-        'done' => $stats['completed_count'],
-        'total' => $stats['total_count'],
-        'routine_total' => $routineTotal,
-        'todo_total' => $todoTotal
+        'percentage' => $stats['total'] > 0 ? round(($stats['done'] / $stats['total']) * 100) : 0,
+        'done' => (int)$stats['done'],
+        'total' => (int)$stats['total']
     ]);
     
+// ============================================
+// Routine Tasks
+// ============================================
 } elseif ($action == 'get_routine_tasks') {
     $stmt = $pdo->query("SELECT * FROM routine_tasks ORDER BY task_order");
-    $tasks = $stmt->fetchAll();
+    $tasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
     echo json_encode(['success' => true, 'tasks' => $tasks]);
-    
-} elseif ($action == 'get_todo_tasks') {
-    $stmt = $pdo->query("SELECT * FROM todo_tasks ORDER BY id");
-    $tasks = $stmt->fetchAll();
-    echo json_encode(['success' => true, 'tasks' => $tasks]);
-    
-} elseif ($action == 'toggle_routine') {
-    $taskId = $_POST['task_id'];
-    $isDone = $_POST['is_done'] == 'true' ? 1 : 0;
-    
-    $stmt = $pdo->prepare("UPDATE routine_tasks SET is_done = ? WHERE id = ?");
-    $stmt->execute([$isDone, $taskId]);
-    
-    // به‌روزرسانی آمار روزانه
-    updateDailyStats($pdo);
-    
-    echo json_encode(['success' => true]);
-    
-} elseif ($action == 'toggle_todo') {
-    $taskId = $_POST['task_id'];
-    $isDone = $_POST['is_done'] == 'true' ? 1 : 0;
-    
-    $stmt = $pdo->prepare("UPDATE todo_tasks SET is_done = ? WHERE id = ?");
-    $stmt->execute([$isDone, $taskId]);
-    
-    echo json_encode(['success' => true]);
     
 } elseif ($action == 'add_routine_task') {
-    $taskName = trim($_POST['task_name']);
+    $taskName = trim($_POST['task_name'] ?? '');
+    
     if (empty($taskName)) {
         echo json_encode(['success' => false, 'message' => 'Task name cannot be empty']);
         exit;
@@ -70,50 +53,177 @@ if ($action == 'get_stats') {
     
     $stmt = $pdo->prepare("SELECT MAX(task_order) as max_order FROM routine_tasks");
     $stmt->execute();
-    $maxOrder = $stmt->fetch()['max_order'] ?? 0;
+    $maxOrder = $stmt->fetch(PDO::FETCH_ASSOC)['max_order'] ?? 0;
     $newOrder = $maxOrder + 1;
     
     $stmt = $pdo->prepare("INSERT INTO routine_tasks (task_name, task_order) VALUES (?, ?)");
-    $stmt->execute([$taskName, $newOrder]);
-    $newId = $pdo->lastInsertId();
+    $result = $stmt->execute([$taskName, $newOrder]);
     
-    updateDailyStats($pdo);
+    if ($result) {
+        $newId = $pdo->lastInsertId();
+        echo json_encode(['success' => true, 'id' => $newId, 'task_name' => $taskName]);
+    } else {
+        echo json_encode(['success' => false, 'message' => 'Database insert failed']);
+    }
     
-    echo json_encode(['success' => true, 'id' => $newId, 'task_name' => $taskName]);
+} elseif ($action == 'toggle_routine') {
+    $taskId = $_POST['task_id'] ?? 0;
+    $isDone = ($_POST['is_done'] ?? 'false') == 'true' ? 1 : 0;
+    
+    $stmt = $pdo->prepare("UPDATE routine_tasks SET is_done = ? WHERE id = ?");
+    $result = $stmt->execute([$isDone, $taskId]);
+    
+    echo json_encode(['success' => $result]);
+    
+} elseif ($action == 'delete_routine_task') {
+    $taskId = $_POST['task_id'] ?? 0;
+    
+    $stmt = $pdo->prepare("DELETE FROM routine_tasks WHERE id = ?");
+    $result = $stmt->execute([$taskId]);
+    
+    echo json_encode(['success' => $result]);
+    
+// ============================================
+// Todo Tasks
+// ============================================
+} elseif ($action == 'get_todo_tasks') {
+    $stmt = $pdo->query("SELECT * FROM todo_tasks ORDER BY id DESC");
+    $tasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    echo json_encode(['success' => true, 'tasks' => $tasks]);
     
 } elseif ($action == 'add_todo_task') {
-    $taskName = trim($_POST['task_name']);
+    $taskName = trim($_POST['task_name'] ?? '');
+    
     if (empty($taskName)) {
         echo json_encode(['success' => false, 'message' => 'Task name cannot be empty']);
         exit;
     }
     
     $stmt = $pdo->prepare("INSERT INTO todo_tasks (task_name) VALUES (?)");
-    $stmt->execute([$taskName]);
-    $newId = $pdo->lastInsertId();
+    $result = $stmt->execute([$taskName]);
     
-    echo json_encode(['success' => true, 'id' => $newId, 'task_name' => $taskName]);
+    if ($result) {
+        $newId = $pdo->lastInsertId();
+        echo json_encode(['success' => true, 'id' => $newId, 'task_name' => $taskName]);
+    } else {
+        echo json_encode(['success' => false, 'message' => 'Database insert failed']);
+    }
     
-} elseif ($action == 'delete_routine_task') {
-    $taskId = $_POST['task_id'];
-    $stmt = $pdo->prepare("DELETE FROM routine_tasks WHERE id = ?");
-    $stmt->execute([$taskId]);
+} elseif ($action == 'toggle_todo') {
+    $taskId = $_POST['task_id'] ?? 0;
+    $isDone = ($_POST['is_done'] ?? 'false') == 'true' ? 1 : 0;
     
-    updateDailyStats($pdo);
+    $stmt = $pdo->prepare("UPDATE todo_tasks SET is_done = ? WHERE id = ?");
+    $result = $stmt->execute([$isDone, $taskId]);
     
-    echo json_encode(['success' => true]);
+    echo json_encode(['success' => $result]);
     
 } elseif ($action == 'delete_todo_task') {
-    $taskId = $_POST['task_id'];
+    $taskId = $_POST['task_id'] ?? 0;
+    
     $stmt = $pdo->prepare("DELETE FROM todo_tasks WHERE id = ?");
-    $stmt->execute([$taskId]);
+    $result = $stmt->execute([$taskId]);
     
-    echo json_encode(['success' => true]);
+    echo json_encode(['success' => $result]);
     
+
+
+
+
+
+    
+// ============================================
+// Movies
+// ============================================
+} elseif ($action == 'get_movies') {
+    $stmt = $pdo->query("SELECT * FROM movies ORDER BY id DESC");
+    $movies = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    echo json_encode(['success' => true, 'movies' => $movies]);
+    
+} elseif ($action == 'add_movie') {
+    $movieName = trim($_POST['movie_name'] ?? '');
+    
+    if (empty($movieName)) {
+        echo json_encode(['success' => false, 'message' => 'Movie name cannot be empty']);
+        exit;
+    }
+    
+    $stmt = $pdo->prepare("INSERT INTO movies (movie_name) VALUES (?)");
+    $result = $stmt->execute([$movieName]);
+    
+    if ($result) {
+        $newId = $pdo->lastInsertId();
+        echo json_encode(['success' => true, 'id' => $newId, 'movie_name' => $movieName]);
+    } else {
+        echo json_encode(['success' => false, 'message' => 'Database insert failed']);
+    }
+    
+} elseif ($action == 'toggle_movie') {
+    $movieId = $_POST['movie_id'] ?? 0;
+    $isWatched = ($_POST['is_watched'] ?? 'false') == 'true' ? 1 : 0;
+    
+    $stmt = $pdo->prepare("UPDATE movies SET is_watched = ? WHERE id = ?");
+    $result = $stmt->execute([$isWatched, $movieId]);
+    
+    echo json_encode(['success' => $result]);
+    
+} elseif ($action == 'delete_movie') {
+    $movieId = $_POST['movie_id'] ?? 0;
+    
+    $stmt = $pdo->prepare("DELETE FROM movies WHERE id = ?");
+    $result = $stmt->execute([$movieId]);
+    
+    echo json_encode(['success' => $result]);
+    
+// ============================================
+// Books
+// ============================================
+} elseif ($action == 'get_books') {
+    $stmt = $pdo->query("SELECT * FROM books ORDER BY id DESC");
+    $books = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    echo json_encode(['success' => true, 'books' => $books]);
+    
+} elseif ($action == 'add_book') {
+    $bookName = trim($_POST['book_name'] ?? '');
+    
+    if (empty($bookName)) {
+        echo json_encode(['success' => false, 'message' => 'Book name cannot be empty']);
+        exit;
+    }
+    
+    $stmt = $pdo->prepare("INSERT INTO books (book_name) VALUES (?)");
+    $result = $stmt->execute([$bookName]);
+    
+    if ($result) {
+        $newId = $pdo->lastInsertId();
+        echo json_encode(['success' => true, 'id' => $newId, 'book_name' => $bookName]);
+    } else {
+        echo json_encode(['success' => false, 'message' => 'Database insert failed']);
+    }
+    
+} elseif ($action == 'toggle_book') {
+    $bookId = $_POST['book_id'] ?? 0;
+    $isRead = ($_POST['is_read'] ?? 'false') == 'true' ? 1 : 0;
+    
+    $stmt = $pdo->prepare("UPDATE books SET is_read = ? WHERE id = ?");
+    $result = $stmt->execute([$isRead, $bookId]);
+    
+    echo json_encode(['success' => $result]);
+    
+} elseif ($action == 'delete_book') {
+    $bookId = $_POST['book_id'] ?? 0;
+    
+    $stmt = $pdo->prepare("DELETE FROM books WHERE id = ?");
+    $result = $stmt->execute([$bookId]);
+    
+    echo json_encode(['success' => $result]);
+    
+// ============================================
+// Monthly Stats
+// ============================================
 } elseif ($action == 'get_monthly_stats') {
     $year = $_GET['year'] ?? date('Y');
     $month = $_GET['month'] ?? date('m');
-    
     $startDate = "$year-$month-01";
     $endDate = date('Y-m-t', strtotime($startDate));
     
@@ -121,36 +231,22 @@ if ($action == 'get_stats') {
         SELECT stat_date, percentage 
         FROM daily_stats 
         WHERE stat_date BETWEEN ? AND ?
-        ORDER BY stat_date
     ");
     $stmt->execute([$startDate, $endDate]);
-    $stats = $stmt->fetchAll();
+    $stats = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
     $result = [];
     foreach ($stats as $stat) {
-        list($jy, $jm, $jd) = gregorian_to_jalali(
-            (int)substr($stat['stat_date'], 0, 4),
-            (int)substr($stat['stat_date'], 5, 2),
-            (int)substr($stat['stat_date'], 8, 2)
-        );
+        $dayNum = (int)substr($stat['stat_date'], 8, 2);
         $result[] = [
-            'date' => $stat['stat_date'],
-            'jalali_day' => $jd,
+            'jalali_day' => $dayNum,
             'percentage' => (int)$stat['percentage']
         ];
     }
     
-    echo json_encode(['success' => true, 'stats' => $result, 'year' => $year, 'month' => $month]);
-    
-} elseif ($action == 'reorder_routine') {
-    $orders = json_decode($_POST['orders'], true);
-    foreach ($orders as $order) {
-        $stmt = $pdo->prepare("UPDATE routine_tasks SET task_order = ? WHERE id = ?");
-        $stmt->execute([$order['order'], $order['id']]);
-    }
-    echo json_encode(['success' => true]);
+    echo json_encode(['success' => true, 'stats' => $result]);
     
 } else {
-    echo json_encode(['success' => false, 'message' => 'Invalid action']);
+    echo json_encode(['success' => false, 'message' => 'Unknown action: ' . $action]);
 }
 ?>

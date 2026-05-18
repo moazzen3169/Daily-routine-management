@@ -43,32 +43,17 @@ let isRunning = false;
 let currentMode = 'work';
 
 // ============================================
-// مدیریت مودال‌ها
+// Helper Functions
 // ============================================
-function showTaskModal() {
-    const modal = document.getElementById('taskModal');
-    if (modal) modal.style.display = 'flex';
-}
-
-function hideTaskModal() {
-    const modal = document.getElementById('taskModal');
-    if (modal) modal.style.display = 'none';
-    document.getElementById('newTaskTitle').value = '';
-}
-
-function showTimeModal() {
-    const modal = document.getElementById('timeModal');
-    if (modal) modal.style.display = 'flex';
-}
-
-function hideTimeModal() {
-    const modal = document.getElementById('timeModal');
-    if (modal) modal.style.display = 'none';
-    document.getElementById('addMinutesInput').value = '5';
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
 }
 
 // ============================================
-// بارگذاری آمار
+// توابع آمار
 // ============================================
 async function loadStats() {
     try {
@@ -94,7 +79,7 @@ async function loadStats() {
 }
 
 // ============================================
-// بارگذاری کارهای روتین
+// توابع کارهای روتین
 // ============================================
 async function loadRoutineTasks() {
     try {
@@ -113,7 +98,7 @@ async function loadRoutineTasks() {
                 label.innerHTML = `
                     <input type="checkbox" name="routine-task" data-id="${task.id}" ${task.is_done ? 'checked' : ''}>
                     <span>${escapeHtml(task.task_name)}</span>
-                    <button class="delete-task-btn" data-id="${task.id}" data-type="routine"><img src="assets/delete.svg" ></button>
+                    <button class="delete-task-btn" data-id="${task.id}" data-type="routine">🗑️</button>
                 `;
                 container.appendChild(label);
             });
@@ -131,8 +116,64 @@ async function loadRoutineTasks() {
     }
 }
 
+async function handleRoutineToggle(e) {
+    const checkbox = e.target;
+    const taskId = checkbox.getAttribute('data-id');
+    const isDone = checkbox.checked;
+    
+    try {
+        const formData = new URLSearchParams();
+        formData.append('action', 'toggle_routine');
+        formData.append('task_id', taskId);
+        formData.append('is_done', isDone);
+        
+        const response = await fetch('api.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: formData.toString()
+        });
+        const result = await response.json();
+        
+        if (!result.success) {
+            checkbox.checked = !isDone;
+        } else {
+            loadStats();
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        checkbox.checked = !isDone;
+    }
+}
+
+async function handleDeleteRoutine(e) {
+    const btn = e.target;
+    const taskId = btn.getAttribute('data-id');
+    
+    if (!confirm('Are you sure you want to delete this task?')) return;
+    
+    try {
+        const formData = new URLSearchParams();
+        formData.append('action', 'delete_routine_task');
+        formData.append('task_id', taskId);
+        
+        const response = await fetch('api.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: formData.toString()
+        });
+        const result = await response.json();
+        
+        if (result.success) {
+            loadRoutineTasks();
+            loadStats();
+        }
+    } catch (error) {
+        console.error('Error:', error);
+    }
+}
+
 // ============================================
-// بارگذاری Todo List
+// توابع Todo List
 // ============================================
 async function loadTodoTasks() {
     try {
@@ -169,38 +210,6 @@ async function loadTodoTasks() {
     }
 }
 
-// ============================================
-// Event Handlers برای تسک‌ها
-// ============================================
-async function handleRoutineToggle(e) {
-    const checkbox = e.target;
-    const taskId = checkbox.getAttribute('data-id');
-    const isDone = checkbox.checked;
-    
-    try {
-        const formData = new URLSearchParams();
-        formData.append('action', 'toggle_routine');
-        formData.append('task_id', taskId);
-        formData.append('is_done', isDone);
-        
-        const response = await fetch('api.php', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: formData.toString()
-        });
-        const result = await response.json();
-        
-        if (!result.success) {
-            checkbox.checked = !isDone;
-        } else {
-            loadStats();
-        }
-    } catch (error) {
-        console.error('Error:', error);
-        checkbox.checked = !isDone;
-    }
-}
-
 async function handleTodoToggle(e) {
     const checkbox = e.target;
     const taskId = checkbox.getAttribute('data-id');
@@ -225,33 +234,6 @@ async function handleTodoToggle(e) {
     } catch (error) {
         console.error('Error:', error);
         checkbox.checked = !isDone;
-    }
-}
-
-async function handleDeleteRoutine(e) {
-    const btn = e.target;
-    const taskId = btn.getAttribute('data-id');
-    
-    if (!confirm('Are you sure you want to delete this task?')) return;
-    
-    try {
-        const formData = new URLSearchParams();
-        formData.append('action', 'delete_routine_task');
-        formData.append('task_id', taskId);
-        
-        const response = await fetch('api.php', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: formData.toString()
-        });
-        const result = await response.json();
-        
-        if (result.success) {
-            loadRoutineTasks();
-            loadStats();
-        }
-    } catch (error) {
-        console.error('Error:', error);
     }
 }
 
@@ -282,10 +264,283 @@ async function handleDeleteTodo(e) {
 }
 
 // ============================================
-// اضافه کردن تسک جدید از مودال
+// توابع فیلم‌ها
 // ============================================
-async function addNewTaskFromModal() {
-    const taskName = document.getElementById('newTaskTitle').value.trim();
+async function loadMovies() {
+    try {
+        const response = await fetch('api.php?action=get_movies');
+        const data = await response.json();
+        
+        if (data.success) {
+            const container = document.querySelector('.movie-list .booklist-task');
+            if (!container) return;
+            
+            container.innerHTML = '';
+            data.movies.forEach(movie => {
+                const label = document.createElement('label');
+                label.className = 'task';
+                label.setAttribute('data-movie-id', movie.id);
+                label.innerHTML = `
+                    <input type="checkbox" class="movie-checkbox" data-id="${movie.id}" ${movie.is_watched ? 'checked' : ''}>
+                    <span>${escapeHtml(movie.movie_name)}</span>
+                    <button class="delete-movie-btn" data-id="${movie.id}">🗑️</button>
+                `;
+                container.appendChild(label);
+            });
+            
+            document.querySelectorAll('.movie-checkbox').forEach(checkbox => {
+                checkbox.addEventListener('change', handleMovieToggle);
+            });
+            
+            document.querySelectorAll('.delete-movie-btn').forEach(btn => {
+                btn.addEventListener('click', handleDeleteMovie);
+            });
+        }
+    } catch (error) {
+        console.error('Error loading movies:', error);
+    }
+}
+
+async function handleMovieToggle(e) {
+    const checkbox = e.target;
+    const movieId = checkbox.getAttribute('data-id');
+    const isWatched = checkbox.checked;
+    
+    try {
+        const formData = new URLSearchParams();
+        formData.append('action', 'toggle_movie');
+        formData.append('movie_id', movieId);
+        formData.append('is_watched', isWatched);
+        
+        const response = await fetch('api.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: formData.toString()
+        });
+        const result = await response.json();
+        
+        if (!result.success) {
+            checkbox.checked = !isWatched;
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        checkbox.checked = !isWatched;
+    }
+}
+
+async function handleDeleteMovie(e) {
+    const btn = e.target;
+    const movieId = btn.getAttribute('data-id');
+    
+    if (!confirm('Are you sure you want to delete this movie?')) return;
+    
+    try {
+        const formData = new URLSearchParams();
+        formData.append('action', 'delete_movie');
+        formData.append('movie_id', movieId);
+        
+        const response = await fetch('api.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: formData.toString()
+        });
+        const result = await response.json();
+        
+        if (result.success) {
+            loadMovies();
+        }
+    } catch (error) {
+        console.error('Error:', error);
+    }
+}
+
+// ============================================
+// توابع کتاب‌ها
+// ============================================
+async function loadBooks() {
+    try {
+        const response = await fetch('api.php?action=get_books');
+        const data = await response.json();
+        
+        if (data.success) {
+            const container = document.querySelector('.book-list .booklist-task');
+            if (!container) return;
+            
+            container.innerHTML = '';
+            data.books.forEach(book => {
+                const label = document.createElement('label');
+                label.className = 'task';
+                label.setAttribute('data-book-id', book.id);
+                label.innerHTML = `
+                    <input type="checkbox" class="book-checkbox" data-id="${book.id}" ${book.is_read ? 'checked' : ''}>
+                    <span>${escapeHtml(book.book_name)}</span>
+                    <button class="delete-book-btn" data-id="${book.id}">🗑️</button>
+                `;
+                container.appendChild(label);
+            });
+            
+            document.querySelectorAll('.book-checkbox').forEach(checkbox => {
+                checkbox.addEventListener('change', handleBookToggle);
+            });
+            
+            document.querySelectorAll('.delete-book-btn').forEach(btn => {
+                btn.addEventListener('click', handleDeleteBook);
+            });
+        }
+    } catch (error) {
+        console.error('Error loading books:', error);
+    }
+}
+
+async function handleBookToggle(e) {
+    const checkbox = e.target;
+    const bookId = checkbox.getAttribute('data-id');
+    const isRead = checkbox.checked;
+    
+    try {
+        const formData = new URLSearchParams();
+        formData.append('action', 'toggle_book');
+        formData.append('book_id', bookId);
+        formData.append('is_read', isRead);
+        
+        const response = await fetch('api.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: formData.toString()
+        });
+        const result = await response.json();
+        
+        if (!result.success) {
+            checkbox.checked = !isRead;
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        checkbox.checked = !isRead;
+    }
+}
+
+async function handleDeleteBook(e) {
+    const btn = e.target;
+    const bookId = btn.getAttribute('data-id');
+    
+    if (!confirm('Are you sure you want to delete this book?')) return;
+    
+    try {
+        const formData = new URLSearchParams();
+        formData.append('action', 'delete_book');
+        formData.append('book_id', bookId);
+        
+        const response = await fetch('api.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: formData.toString()
+        });
+        const result = await response.json();
+        
+        if (result.success) {
+            loadBooks();
+        }
+    } catch (error) {
+        console.error('Error:', error);
+    }
+}
+
+// ============================================
+// تایمر پومودورو
+// ============================================
+function updateTimerDisplay() {
+    const minutes = Math.floor(timerSeconds / 60);
+    const seconds = timerSeconds % 60;
+    const timerElement = document.querySelector('.timer');
+    const pomodoroTimeElement = document.querySelector('.pomodoro-time');
+    
+    if (timerElement) {
+        timerElement.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+    }
+    if (pomodoroTimeElement && !isRunning) {
+        pomodoroTimeElement.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+    }
+}
+
+function startTimer() {
+    if (timerInterval) clearInterval(timerInterval);
+    isRunning = true;
+    
+    const startBtn = document.querySelector('.start-btn');
+    if (startBtn) startBtn.textContent = 'STOP';
+    
+    timerInterval = setInterval(() => {
+        if (timerSeconds > 0) {
+            timerSeconds--;
+            updateTimerDisplay();
+        } else {
+            stopTimer();
+            if (currentMode === 'work') {
+                currentMode = 'rest';
+                timerSeconds = 5 * 60;
+                alert('✅ Work time finished! Take a 5-minute break.');
+            } else {
+                currentMode = 'work';
+                timerSeconds = 25 * 60;
+                alert('☕ Break time finished! Back to work.');
+            }
+            updateTimerDisplay();
+            updatePomodoroUI();
+            startTimer();
+        }
+    }, 1000);
+}
+
+function stopTimer() {
+    if (timerInterval) {
+        clearInterval(timerInterval);
+        timerInterval = null;
+    }
+    isRunning = false;
+    
+    const startBtn = document.querySelector('.start-btn');
+    if (startBtn) startBtn.textContent = 'START';
+}
+
+function updatePomodoroUI() {
+    const workBtn = document.querySelector('.pomodoro-option:first-child');
+    const restBtn = document.querySelector('.pomodoro-option:last-child');
+    
+    if (workBtn && restBtn) {
+        if (currentMode === 'work') {
+            workBtn.classList.add('op-active');
+            restBtn.classList.remove('op-active');
+        } else {
+            restBtn.classList.add('op-active');
+            workBtn.classList.remove('op-active');
+        }
+    }
+}
+
+// ============================================
+// مدیریت مودال تسک
+// ============================================
+function showTaskModal() {
+    const modal = document.getElementById('taskModal');
+    if (modal) {
+        modal.style.display = 'flex';
+        const input = document.getElementById('newTaskTitle');
+        if (input) {
+            input.value = '';
+            input.focus();
+        }
+    }
+}
+
+function hideTaskModal() {
+    const modal = document.getElementById('taskModal');
+    if (modal) modal.style.display = 'none';
+}
+
+async function addTaskFromModal() {
+    const input = document.getElementById('newTaskTitle');
+    const taskName = input?.value.trim();
+    
     if (!taskName) {
         alert('Please enter a task name');
         return;
@@ -323,93 +578,31 @@ async function addNewTaskFromModal() {
 }
 
 // ============================================
-// تایمر پومودورو با دکمه‌های استاپ و ریستارت
+// مدیریت مودال زمان پومودورو
 // ============================================
-function updateTimerDisplay() {
-    const minutes = Math.floor(timerSeconds / 60);
-    const seconds = timerSeconds % 60;
-    const timerElement = document.querySelector('.timer');
-    const pomodoroTimeElement = document.querySelector('.pomodoro-time');
-    
-    if (timerElement) {
-        timerElement.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-    }
-    if (pomodoroTimeElement && !isRunning) {
-        pomodoroTimeElement.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-    }
-}
-
-function startTimer() {
-    if (timerInterval) clearInterval(timerInterval);
-    isRunning = true;
-    
-    // تغییر نمایش دکمه‌ها
-    const startBtn = document.querySelector('.start-btn');
-    if (startBtn) startBtn.style.display = 'none';
-    
-    // اضافه کردن دکمه‌های Stop و Restart
-    const pomodoroMain = document.querySelector('.pomodoro-main');
-    if (pomodoroMain && !document.querySelector('.pomodoro-actions')) {
-        const actionsDiv = document.createElement('div');
-        actionsDiv.className = 'pomodoro-actions';
-        actionsDiv.innerHTML = `
-            <button class="pomodoro-action-btn" id="stopTimerBtn">⏹️ Stop</button>
-            <button class="pomodoro-action-btn" id="restartTimerBtn">🔄 Restart</button>
-        `;
-        pomodoroMain.appendChild(actionsDiv);
-    }
-    
-    timerInterval = setInterval(() => {
-        if (timerSeconds > 0) {
-            timerSeconds--;
-            updateTimerDisplay();
-        } else {
-            stopTimer();
-            if (currentMode === 'work') {
-                currentMode = 'rest';
-                timerSeconds = 5 * 60;
-                document.querySelector('.pomodoro-time').textContent = '05:00';
-                alert('✅ Work time finished! Take a 5-minute break.');
-            } else {
-                currentMode = 'work';
-                timerSeconds = 25 * 60;
-                document.querySelector('.pomodoro-time').textContent = '25:00';
-                alert('☕ Break time finished! Back to work.');
-            }
-            updateTimerDisplay();
-            updatePomodoroUI();
-            startTimer();
+function showTimeModal() {
+    const modal = document.getElementById('timeModal');
+    if (modal) {
+        modal.style.display = 'flex';
+        const input = document.getElementById('addMinutesInput');
+        if (input) {
+            input.value = '5';
+            input.focus();
         }
-    }, 1000);
-}
-
-function stopTimer() {
-    if (timerInterval) {
-        clearInterval(timerInterval);
-        timerInterval = null;
     }
-    isRunning = false;
-    
-    // نمایش مجدد دکمه START
-    const startBtn = document.querySelector('.start-btn');
-    if (startBtn) startBtn.style.display = 'flex';
-    
-    // حذف دکمه‌های Stop و Restart
-    const actionsDiv = document.querySelector('.pomodoro-actions');
-    if (actionsDiv) actionsDiv.remove();
 }
 
-function restartTimer() {
-    stopTimer();
-    timerSeconds = currentMode === 'work' ? 25 * 60 : 5 * 60;
-    updateTimerDisplay();
-    startTimer();
+function hideTimeModal() {
+    const modal = document.getElementById('timeModal');
+    if (modal) modal.style.display = 'none';
 }
 
 function addTimeFromModal() {
-    const minutes = parseInt(document.getElementById('addMinutesInput').value);
+    const input = document.getElementById('addMinutesInput');
+    const minutes = parseInt(input?.value);
+    
     if (isNaN(minutes) || minutes < 1) {
-        alert('Please enter a valid number of minutes');
+        alert('Please enter a valid number of minutes (minimum 1)');
         return;
     }
     
@@ -427,29 +620,12 @@ function addTimeFromModal() {
     }
 }
 
-function updatePomodoroUI() {
-    const workBtn = document.querySelector('.pomodoro-option:first-child');
-    const restBtn = document.querySelector('.pomodoro-option:last-child');
-    
-    if (currentMode === 'work') {
-        workBtn.classList.add('op-active');
-        restBtn.classList.remove('op-active');
-    } else {
-        restBtn.classList.add('op-active');
-        workBtn.classList.remove('op-active');
-    }
-}
-
 // ============================================
-// تقویم ماهانه با level برای روزهای خالی و گذشته
+// تقویم ماهانه
 // ============================================
 async function loadMonthlyCalendar() {
     const year = currentMonth.getFullYear();
     const month = currentMonth.getMonth() + 1;
-    const today = new Date();
-    const todayDay = today.getDate();
-    const todayMonth = today.getMonth() + 1;
-    const todayYear = today.getFullYear();
     
     try {
         const response = await fetch(`api.php?action=get_monthly_stats&year=${year}&month=${month}`);
@@ -466,9 +642,7 @@ async function loadMonthlyCalendar() {
             
             days.forEach((day, index) => {
                 const dayNum = index + 1;
-                
                 if (dayNum <= daysInMonth) {
-                    // تعیین سطح رنگ بر اساس درصد
                     const percentage = statsMap[dayNum] || 0;
                     let level = 0;
                     if (percentage > 0 && percentage < 25) level = 1;
@@ -477,28 +651,6 @@ async function loadMonthlyCalendar() {
                     else if (percentage >= 75) level = 4;
                     
                     day.className = `calender-day-cart level-${level}`;
-                    
-                    // اگر روز گذشته است و درصد 0 دارد، level-0 بده
-                    const isPast = (year < todayYear) || 
-                                   (year === todayYear && month < todayMonth) ||
-                                   (year === todayYear && month === todayMonth && dayNum < todayDay);
-                    
-                    if (isPast && percentage === 0) {
-                        day.className = `calender-day-cart level-0`;
-                    }
-                    
-                    // روزهای آینده
-                    const isFuture = (year > todayYear) ||
-                                     (year === todayYear && month > todayMonth) ||
-                                     (year === todayYear && month === todayMonth && dayNum > todayDay);
-                    
-                    if (isFuture && percentage === 0) {
-                        day.classList.add('future');
-                    }
-                } else {
-                    // روزهای خالی (بیش از تعداد روزهای ماه)
-                    day.className = `calender-day-cart level-0 empty-day`;
-                    day.style.opacity = '0.3';
                 }
             });
         }
@@ -508,7 +660,7 @@ async function loadMonthlyCalendar() {
 }
 
 // ============================================
-// تغییر تب
+// تغییر تب و فیلتر
 // ============================================
 function switchTab(tab) {
     currentTab = tab;
@@ -517,17 +669,14 @@ function switchTab(tab) {
     tabs.forEach(t => t.classList.remove('active'));
     
     if (tab === 'routine') {
-        tabs[0].classList.add('active');
+        if (tabs[0]) tabs[0].classList.add('active');
         loadRoutineTasks();
     } else {
-        tabs[1].classList.add('active');
+        if (tabs[1]) tabs[1].classList.add('active');
         loadTodoTasks();
     }
 }
 
-// ============================================
-// فیلتر کردن کارها
-// ============================================
 function filterTasks(filter) {
     const tasks = document.querySelectorAll('.task');
     tasks.forEach(task => {
@@ -545,18 +694,168 @@ function filterTasks(filter) {
 }
 
 // ============================================
-// Helper Functions
+// Event Listeners
 // ============================================
-function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
+function setupFormListeners() {
+    // ============================================
+    // دکمه افزودن تسک (Routine/Todo) - باز کردن مودال
+    // ============================================
+    const addTaskBtn = document.querySelector('.add-task');
+    if (addTaskBtn) {
+        const newBtn = addTaskBtn.cloneNode(true);
+        addTaskBtn.parentNode.replaceChild(newBtn, addTaskBtn);
+        
+        newBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            showTaskModal();
+        });
+    }
+    
+    // ============================================
+    // دکمه افزودن زمان پومودورو - باز کردن مودال
+    // ============================================
+    const addTimeBtn = document.querySelector('.add-time');
+    if (addTimeBtn) {
+        const newTimeBtn = addTimeBtn.cloneNode(true);
+        addTimeBtn.parentNode.replaceChild(newTimeBtn, addTimeBtn);
+        
+        newTimeBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            showTimeModal();
+        });
+    }
+    
+    // ============================================
+    // Event Listeners مودال تسک
+    // ============================================
+    const closeTaskModal = document.getElementById('closeTaskModal');
+    const cancelTaskModal = document.getElementById('cancelTaskModal');
+    const addTaskConfirm = document.getElementById('addTaskConfirm');
+    const taskModal = document.getElementById('taskModal');
+    const taskInput = document.getElementById('newTaskTitle');
+    
+    if (closeTaskModal) closeTaskModal.addEventListener('click', hideTaskModal);
+    if (cancelTaskModal) cancelTaskModal.addEventListener('click', hideTaskModal);
+    if (addTaskConfirm) addTaskConfirm.addEventListener('click', addTaskFromModal);
+    if (taskModal) taskModal.addEventListener('click', (e) => {
+        if (e.target === taskModal) hideTaskModal();
+    });
+    if (taskInput) taskInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            addTaskFromModal();
+        }
+    });
+    
+    // ============================================
+    // Event Listeners مودال زمان
+    // ============================================
+    const closeTimeModal = document.getElementById('closeTimeModal');
+    const cancelTimeModal = document.getElementById('cancelTimeModal');
+    const addTimeConfirm = document.getElementById('addTimeConfirm');
+    const timeModal = document.getElementById('timeModal');
+    const timeInput = document.getElementById('addMinutesInput');
+    
+    if (closeTimeModal) closeTimeModal.addEventListener('click', hideTimeModal);
+    if (cancelTimeModal) cancelTimeModal.addEventListener('click', hideTimeModal);
+    if (addTimeConfirm) addTimeConfirm.addEventListener('click', addTimeFromModal);
+    if (timeModal) timeModal.addEventListener('click', (e) => {
+        if (e.target === timeModal) hideTimeModal();
+    });
+    if (timeInput) timeInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            addTimeFromModal();
+        }
+    });
+    
+    // ============================================
+    // فرم افزودن فیلم
+    // ============================================
+    const movieForm = document.querySelector('.movie-list-head form');
+    if (movieForm) {
+        movieForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const input = document.querySelector('#movie-name');
+            const movieName = input?.value.trim();
+            
+            if (!movieName) {
+                alert('Please enter a movie name');
+                return;
+            }
+            
+            try {
+                const formData = new URLSearchParams();
+                formData.append('action', 'add_movie');
+                formData.append('movie_name', movieName);
+                
+                const response = await fetch('api.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: formData.toString()
+                });
+                const result = await response.json();
+                
+                if (result.success) {
+                    if (input) input.value = '';
+                    loadMovies();
+                } else {
+                    alert(result.message || 'Error adding movie');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error adding movie');
+            }
+        });
+    }
+    
+    // ============================================
+    // فرم افزودن کتاب
+    // ============================================
+    const bookForm = document.querySelector('.book-list-head form');
+    if (bookForm) {
+        bookForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const input = document.querySelector('#book-name');
+            const bookName = input?.value.trim();
+            
+            if (!bookName) {
+                alert('Please enter a book name');
+                return;
+            }
+            
+            try {
+                const formData = new URLSearchParams();
+                formData.append('action', 'add_book');
+                formData.append('book_name', bookName);
+                
+                const response = await fetch('api.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: formData.toString()
+                });
+                const result = await response.json();
+                
+                if (result.success) {
+                    if (input) input.value = '';
+                    loadBooks();
+                } else {
+                    alert(result.message || 'Error adding book');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error adding book');
+            }
+        });
+    }
 }
 
 // ============================================
 // مقداردهی اولیه
 // ============================================
 document.addEventListener('DOMContentLoaded', async () => {
+    console.log('DOM loaded, initializing...');
+    
     // تنظیم تاریخ شمسی
     const now = new Date();
     const [jy, jm, jd] = gregorianToJalali(now.getFullYear(), now.getMonth() + 1, now.getDate());
@@ -570,7 +869,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     // بارگذاری اولیه
     await loadStats();
     await loadRoutineTasks();
+    await loadMovies();
+    await loadBooks();
     await loadMonthlyCalendar();
+    
+    // setup event listeners
+    setupFormListeners();
     
     // Event Listeners برای تب‌ها
     const tabs = document.querySelectorAll('.tab');
@@ -578,54 +882,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         tab.addEventListener('click', () => {
             switchTab(index === 0 ? 'routine' : 'todo');
         });
-    });
-    
-    // Event Listener برای دکمه Add Task (باز کردن مودال)
-    const addTaskBtn = document.querySelector('.add-task');
-    if (addTaskBtn) {
-        addTaskBtn.addEventListener('click', showTaskModal);
-    }
-    
-    // Event Listeners مودال تسک
-    document.getElementById('addTaskConfirm')?.addEventListener('click', addNewTaskFromModal);
-    document.getElementById('closeTaskModal')?.addEventListener('click', hideTaskModal);
-    document.getElementById('cancelTaskModal')?.addEventListener('click', hideTaskModal);
-    
-    // Event Listener برای دکمه Add Time (باز کردن مودال زمان)
-    const addTimeBtn = document.querySelector('.add-time');
-    if (addTimeBtn) {
-        addTimeBtn.addEventListener('click', showTimeModal);
-    }
-    
-    // Event Listeners مودال زمان
-    document.getElementById('addTimeConfirm')?.addEventListener('click', addTimeFromModal);
-    document.getElementById('closeTimeModal')?.addEventListener('click', hideTimeModal);
-    document.getElementById('cancelTimeModal')?.addEventListener('click', hideTimeModal);
-    
-    // Event Listener برای دکمه START پومودورو
-    const startBtn = document.querySelector('.start-btn');
-    if (startBtn) {
-        startBtn.addEventListener('click', () => {
-            if (isRunning) {
-                stopTimer();
-                startBtn.textContent = 'START';
-            } else {
-                startTimer();
-                startBtn.textContent = 'STOP';
-            }
-        });
-    }
-    
-    // Event Listeners برای دکمه‌های Stop و Restart (دینامیک)
-    document.addEventListener('click', (e) => {
-        if (e.target.id === 'stopTimerBtn') {
-            stopTimer();
-            const startBtn = document.querySelector('.start-btn');
-            if (startBtn) startBtn.textContent = 'START';
-        }
-        if (e.target.id === 'restartTimerBtn') {
-            restartTimer();
-        }
     });
     
     // Event Listener برای فیلتر
@@ -636,46 +892,41 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
     
-    // بستن مودال با کلیک روی overlay
-    window.addEventListener('click', (e) => {
-        const taskModal = document.getElementById('taskModal');
-        const timeModal = document.getElementById('timeModal');
-        if (e.target === taskModal) hideTaskModal();
-        if (e.target === timeModal) hideTimeModal();
-    });
-    
-    // تغییر ماه در تقویم
-    const prevMonthBtn = document.querySelector('.calender-head .prev-month');
-    const nextMonthBtn = document.querySelector('.calender-head .next-month');
-    
-    if (!prevMonthBtn || !nextMonthBtn) {
-        const calenderHead = document.querySelector('.calender-head');
-        if (calenderHead && !calenderHead.querySelector('.prev-month')) {
-            const prevBtn = document.createElement('button');
-            prevBtn.innerHTML = '‹';
-            prevBtn.className = 'month-nav-btn prev-month';
-            prevBtn.style.cssText = 'background: none; border: none; color: white; font-size: 1.2rem; cursor: pointer; padding: 0 10px;';
-            calenderHead.insertBefore(prevBtn, calenderHead.firstChild);
-            
-            const nextBtn = document.createElement('button');
-            nextBtn.innerHTML = '›';
-            nextBtn.className = 'month-nav-btn next-month';
-            nextBtn.style.cssText = 'background: none; border: none; color: white; font-size: 1.2rem; cursor: pointer; padding: 0 10px;';
-            calenderHead.appendChild(nextBtn);
-        }
+    // Event Listener برای دکمه START پومودورو
+    const startBtn = document.querySelector('.start-btn');
+    if (startBtn) {
+        startBtn.addEventListener('click', () => {
+            if (isRunning) {
+                stopTimer();
+            } else {
+                startTimer();
+            }
+        });
     }
     
-    document.querySelectorAll('.prev-month').forEach(btn => {
-        btn.addEventListener('click', () => {
-            currentMonth.setMonth(currentMonth.getMonth() - 1);
-            loadMonthlyCalendar();
-        });
-    });
+    // Event Listeners برای دکمه‌های پومودورو
+    const workBtn = document.querySelector('.pomodoro-option:first-child');
+    const restBtn = document.querySelector('.pomodoro-option:last-child');
     
-    document.querySelectorAll('.next-month').forEach(btn => {
-        btn.addEventListener('click', () => {
-            currentMonth.setMonth(currentMonth.getMonth() + 1);
-            loadMonthlyCalendar();
+    if (workBtn) {
+        workBtn.addEventListener('click', () => {
+            stopTimer();
+            currentMode = 'work';
+            timerSeconds = 25 * 60;
+            updateTimerDisplay();
+            updatePomodoroUI();
         });
-    });
+    }
+    
+    if (restBtn) {
+        restBtn.addEventListener('click', () => {
+            stopTimer();
+            currentMode = 'rest';
+            timerSeconds = 5 * 60;
+            updateTimerDisplay();
+            updatePomodoroUI();
+        });
+    }
+    
+    console.log('Initialization complete');
 });

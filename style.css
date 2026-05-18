@@ -225,7 +225,8 @@ header{
     background-color: var(--bg-3);
     border-radius: 50px;
     color: var(--text-primary);
-    border: none;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+
 }
 .tab {
     padding:  10px 20px;
@@ -254,13 +255,14 @@ header{
 .task {
     padding: 14px 20px;
     width: 100%;
-    background-color: var(--green-900);
+    background-color: var(--bg-3);
     display: flex;
     align-items: center;
     justify-content: space-between;
     color: var(--text-primary);
     font-size: 10px;
     border-radius: 10px;
+    direction: rtl;
 }
 
 
@@ -353,6 +355,7 @@ input[type="checkbox"]{
     color: var(--text-primary);
     font-size: 40px;
     font-weight: bold;
+    text-align: center;
 }
 .start-btn {
     padding: 10px 35px;
@@ -562,11 +565,11 @@ input[type="checkbox"]{
 }
 
 .pomodoro-action-btn {
-    background: rgba(255, 255, 255, 0.1);
+    background: var(--bg-3);
     border: 1px solid rgba(255, 255, 255, 0.2);
-    padding: 8px 20px;
-    border-radius: 25px;
-    color: white;
+    padding: 15px 23px;
+    border-radius: 10px;
+    color: var(--text-primary);
     cursor: pointer;
     transition: all 0.2s;
     font-size: 0.8rem;
@@ -596,4 +599,91 @@ input[type="checkbox"]{
     background-color: transparent;
     border: none;
     cursor: pointer;
+}
+
+
+
+
+.movie-list {
+    grid-column: 1/7;
+    background-color:var(--bg-secondary);
+    padding: 20px;border-radius: 10px;
+    min-height:355px;
+    display: flex;
+    flex-direction: column;
+}
+
+.movie-list form{
+    display: flex; align-items: center; justify-content: start;gap: 10px;
+}
+.movie-list-head {
+    display: flex;
+    flex-direction: column;
+    align-items: start;
+    gap: 20px; 
+    justify-content: space-between;
+    width: 100%;
+}
+.section-title {
+    color: var(--text-primary);
+    font-size: 14px;
+    font-weight: normal;
+}
+.add-list-btn {
+    padding: 8.53px;
+    background-color: var(--green-600);
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+
+}
+.book-list {
+    grid-column: 7/13;
+    background-color:var(--bg-secondary);
+    padding: 20px;border-radius: 10px;
+    min-height:340px;
+    display: flex;
+    flex-direction: column;
+}
+.book-list form{
+    display: flex; align-items: center; justify-content: start;gap: 10px;
+}
+.book-list-head {
+    display: flex;
+    flex-direction: column;
+    align-items: start;
+    gap: 20px; 
+    justify-content: space-between;
+    width: 100%;
+}
+
+
+.add-list-input {
+    width: 505px;
+    height: 40px;
+    padding: 0px 0px 0px 9px ;
+    background:var(--bg-3);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+    color: var(--text-primary);
+    font-size: 1rem;
+    outline: none;
+    transition: all 0.2s;
+}
+
+.add-list-input:focus {
+    border-color: var(--green-600);
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.add-list-input::placeholder {
+    color: rgba(255, 255, 255, 0.4);
+}
+.booklist-task{
+    display: grid;
+    grid-template-columns: 1fr ;
+    width: 100%;
+    gap: 12px;
+    max-height: 194px;
+    direction: rtl;
 }
