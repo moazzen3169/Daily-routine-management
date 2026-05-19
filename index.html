@@ -19,7 +19,7 @@
                     <div class="date">1405 / 02 / 27 </div>
                     <div class="week-day">Sunday</div>
                 </div>
-                <div class="progress-bar">50%</div>
+                <div class="progress-bar">0%</div>
             </div>
         </header>
 
@@ -31,7 +31,7 @@
             </div>
             <div>
                 <div class="data-title">Progress Today</div>
-                <div class="data">50% <div class="Progress-main"><div class="Progress-fill"></div></div></div>
+                <div class="data">0% <div class="Progress-main"><div class="Progress-fill"></div></div></div>
             </div>
         </article>
     
@@ -43,7 +43,7 @@
             </div>
             <div>
                 <div class="data-title">Task Done</div>
-                <div class="data">2</div>
+                <div class="data">0</div>
             </div>
         </article>
 
@@ -55,13 +55,9 @@
             </div>
             <div>
                 <div class="data-title">All Tasks</div>
-                <div class="data">4</div>
+                <div class="data">0</div>
             </div>
         </article>
-
-
-
-
 
         <div class="user-calender">
             <div class="calender-head">
@@ -77,37 +73,7 @@
                 <div class="calender-day-title">TH</div>
                 <div class="calender-day-title">FR</div>
                 <div class="calender-day-title">SA</div>
-
-                <div class="calender-day-cart level-1"></div>
-                <div class="calender-day-cart level-1"></div>
-                <div class="calender-day-cart level-1"></div>
-                <div class="calender-day-cart level-1"></div>
-                <div class="calender-day-cart level-1"></div>
-                <div class="calender-day-cart level-1"></div>
-                <div class="calender-day-cart level-3"></div>
-                <div class="calender-day-cart level-3"></div>
-                <div class="calender-day-cart level-3"></div>
-                <div class="calender-day-cart level-3"></div>
-                <div class="calender-day-cart level-3"></div>
-                <div class="calender-day-cart level-3"></div>
-                <div class="calender-day-cart level-2"></div>
-                <div class="calender-day-cart level-2"></div>
-                <div class="calender-day-cart level-2"></div>
-                <div class="calender-day-cart level-2"></div>
-                <div class="calender-day-cart level-2"></div>
-                <div class="calender-day-cart level-2"></div>
-                <div class="calender-day-cart level-2"></div>
-                <div class="calender-day-cart level-4"></div>
-                <div class="calender-day-cart level-4"></div>
-                <div class="calender-day-cart level-4"></div>
-                <div class="calender-day-cart level-4"></div>
-                <div class="calender-day-cart level-4"></div>
-                <div class="calender-day-cart level-4"></div>
-                <div class="calender-day-cart level-4"></div>
-                <div class="calender-day-cart level-4"></div>
-                <div class="calender-day-cart level-1"></div>
-                <div class="calender-day-cart level-2"></div>
-                <div class="calender-day-cart level-3"></div>
+                <!-- 35 روز برای تقویم (حداکثر) - توسط JS پر می‌شوند -->
             </div>
             <div class="calender-info">
                 <div class="calender-day-cart levelCL-1"></div>
@@ -122,63 +88,27 @@
         </div>
 
         <div class="tasks-container">
+            <!-- قسمت tasks-container-head را پیدا کن (حدود خط 85-95) -->
             <div class="tasks-container-head">
                 <select class="task-sort">
                     <option value="all">All</option>
                     <option value="done">Done</option>
-                    <option value="not done">Not Done</option>
+                    <option value="not done" selected>Not Done</option>  <!-- اضافه کردن selected -->
                 </select>
                 <div>
                     <button class="tab active">Routine</button>
                     <button class="tab">Todo List</button>
+                    <button class="export-btn" id="exportTasksBtn" style="margin-right: 10px; background: var(--green-600); border: none; padding: 5px 10px; border-radius: 8px; color: white; cursor: pointer;">📥 Export</button>
                 </div>
             </div>
-            <div class="routin-tasks">
-
-                <label class="task">
-                    <input type="checkbox" name="routine-task" id="routine-task-1">
-                    <span>Waking up at 7 am</span>
-                </label>
-                
-                <label class="task">
-                    <input type="checkbox" name="routine-task" id="routine-task-2">
-                    <span>Exercise for 30 min</span>
-                </label>
-                
-                <label class="task">
-                    <input type="checkbox" name="routine-task" id="routine-task-3">
-                    <span>Read a book</span>
-                </label>
-                <label class="task">
-                    <input type="checkbox" name="routine-task" id="routine-task-1">
-                    <span>Waking up at 7 am</span>
-                </label>
-                <label class="task">
-                    <input type="checkbox" name="routine-task" id="routine-task-1">
-                    <span>Waking up at 7 am</span>
-                </label>
-
-                <label class="task">
-                    <input type="checkbox" name="routine-task" id="routine-task-2">
-                    <span>Exercise for 30 min</span>
-                </label>
-
-                <label class="task">
-                    <input type="checkbox" name="routine-task" id="routine-task-3">
-                    <span>Read a book</span>
-                </label>
-                <label class="task">
-                    <input type="checkbox" name="routine-task" id="routine-task-1">
-                    <span>Waking up at 7 am</span>
-                </label>
-
-            </div>
+            <div class="routin-tasks"></div>
 
             <div class="tasks-container-foot">
                 <button class="add-task" name="add-task"><img src="assets/Plus.svg" alt=""></button>
                 <label for="add-task"> Add Task</label>
             </div>
         </div>
+        
         <div class="pomodoro">
             <div class="pomodoro-head">
                 <button class="pomodoro-option op-active">Rest</button>
@@ -200,10 +130,11 @@
         <div class="movie-list">
             <div class="movie-list-head">
                 <h3 class="section-title">add movie for watch</h3>
-                <form >
+                <form>
                     <button type="submit" class="add-list-btn"><img src="assets/Plus.svg" alt="add"></button>
                     <input class="add-list-input" type="text" name="movie-name" id="movie-name" placeholder="interstelar">
                 </form>
+                <button class="export-list-btn" data-type="movies" style="background: var(--green-600); border: none; padding: 5px 10px; border-radius: 8px; color: white; cursor: pointer; margin-top: 10px;">📥 Export Movies</button>
             </div>
             <div class="booklist-task"></div>
         </div>
@@ -211,53 +142,86 @@
         <div class="book-list">
             <div class="book-list-head">
                 <h3 class="section-title">add book for read</h3>
-                <form >
+                <form>
                     <button type="submit" class="add-list-btn"><img src="assets/Plus.svg" alt="add"></button>
-                    <input class="add-list-input" type="text" name="book-name" id="book-name" placeholder="the little prence">
+                    <input class="add-list-input" type="text" name="book-name" id="book-name" placeholder="the little prince">
                 </form>
-                <!-- movie list -->
+                <button class="export-list-btn" data-type="books" style="background: var(--green-600); border: none; padding: 5px 10px; border-radius: 8px; color: white; cursor: pointer; margin-top: 10px;">📥 Export Books</button>
             </div>
             <div class="booklist-task"></div>
         </div>
-        <!-- پایان body -->
     </div>
 
     <!-- Modal برای افزودن تسک جدید -->
-<div id="taskModal" class="modal-overlay" style="display: none;">
-    <div class="modal-container">
-        <div class="modal-header">
-            <h3>New Task</h3>
-            <button class="modal-close" id="closeTaskModal">&times;</button>
-        </div>
-        <div class="modal-body">
-            <label class="modal-label">Task Title</label>
-            <input type="text" id="newTaskTitle" class="modal-input" placeholder="Waking Up At 7 Am">
-            <div class="modal-buttons">
-                <button id="addTaskConfirm" class="modal-btn modal-btn-primary">Add Task</button>
-                <button id="cancelTaskModal" class="modal-btn modal-btn-secondary">Cancel</button>
+    <div id="taskModal" class="modal-overlay" style="display: none;">
+        <div class="modal-container">
+            <div class="modal-header">
+                <h3>New Task</h3>
+                <button class="modal-close" id="closeTaskModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <label class="modal-label">Task Title</label>
+                <input type="text" id="newTaskTitle" class="modal-input" placeholder="Waking Up At 7 Am">
+                <div class="modal-buttons">
+                    <button id="addTaskConfirm" class="modal-btn modal-btn-primary">Add Task</button>
+                    <button id="cancelTaskModal" class="modal-btn modal-btn-secondary">Cancel</button>
+                </div>
             </div>
         </div>
     </div>
-</div>
 
-<!-- Modal برای افزودن زمان پومودورو -->
-<div id="timeModal" class="modal-overlay" style="display: none;">
-    <div class="modal-container">
-        <div class="modal-header">
-            <h3>Add Time</h3>
-            <button class="modal-close" id="closeTimeModal">&times;</button>
-        </div>
-        <div class="modal-body">
-            <label class="modal-label">Minutes to add</label>
-            <input type="number" id="addMinutesInput" class="modal-input" placeholder="5" min="1" value="5">
-            <div class="modal-buttons">
-                <button id="addTimeConfirm" class="modal-btn modal-btn-primary">Add</button>
-                <button id="cancelTimeModal" class="modal-btn modal-btn-secondary">Cancel</button>
+    <!-- Modal برای ویرایش تسک -->
+    <div id="editTaskModal" class="modal-overlay" style="display: none;">
+        <div class="modal-container">
+            <div class="modal-header">
+                <h3>Edit Task</h3>
+                <button class="modal-close" id="closeEditModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <label class="modal-label">Task Title</label>
+                <input type="text" id="editTaskTitle" class="modal-input" placeholder="Task title">
+                <div class="modal-buttons">
+                    <button id="editTaskConfirm" class="modal-btn modal-btn-primary">Save Changes</button>
+                    <button id="cancelEditModal" class="modal-btn modal-btn-secondary">Cancel</button>
+                </div>
             </div>
         </div>
     </div>
-</div>
 
+    <!-- Modal برای افزودن زمان پومودورو -->
+    <div id="timeModal" class="modal-overlay" style="display: none;">
+        <div class="modal-container">
+            <div class="modal-header">
+                <h3>Add Time</h3>
+                <button class="modal-close" id="closeTimeModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <label class="modal-label">Minutes to add</label>
+                <input type="number" id="addMinutesInput" class="modal-input" placeholder="5" min="1" value="5">
+                <div class="modal-buttons">
+                    <button id="addTimeConfirm" class="modal-btn modal-btn-primary">Add</button>
+                    <button id="cancelTimeModal" class="modal-btn modal-btn-secondary">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal برای انتخاب فرمت Export -->
+    <div id="exportModal" class="modal-overlay" style="display: none;">
+        <div class="modal-container">
+            <div class="modal-header">
+                <h3>Export Data</h3>
+                <button class="modal-close" id="closeExportModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <label class="modal-label">Select format</label>
+                <div class="modal-buttons">
+                    <button id="exportCSV" class="modal-btn modal-btn-primary">CSV</button>
+                    <button id="exportJSON" class="modal-btn modal-btn-primary">JSON</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <script src="script.js"></script>
 </body>

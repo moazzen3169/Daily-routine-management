@@ -43,29 +43,4 @@ function gregorian_to_jalali($g_y, $g_m, $g_d) {
     
     return [$jy, $jm, $jd];
 }
-
-// تابع به‌روزرسانی آمار روزانه
-function updateDailyStats($pdo, $date = null) {
-    if (!$date) $date = date('Y-m-d');
-    
-    $stmt = $pdo->prepare("SELECT COUNT(*) as total, SUM(is_done) as done FROM routine_tasks");
-    $stmt->execute();
-    $result = $stmt->fetch();
-    
-    $total = $result['total'];
-    $done = $result['done'] ?? 0;
-    $percentage = $total > 0 ? round(($done / $total) * 100) : 0;
-    
-    $stmt = $pdo->prepare("
-        INSERT INTO daily_stats (stat_date, completed_count, total_count, percentage) 
-        VALUES (?, ?, ?, ?)
-        ON DUPLICATE KEY UPDATE 
-        completed_count = VALUES(completed_count),
-        total_count = VALUES(total_count),
-        percentage = VALUES(percentage)
-    ");
-    $stmt->execute([$date, $done, $total, $percentage]);
-    
-    return ['total' => $total, 'done' => $done, 'percentage' => $percentage];
-}
 ?>

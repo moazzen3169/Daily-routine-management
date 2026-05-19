@@ -125,7 +125,7 @@ header{
     font-weight: bold;
     display: flex;
     align-items: center;
-    justify-content: center;
+    justify-content: start;
     gap: 2px;
 }
 .icon {
@@ -187,11 +187,13 @@ header{
     width: 25px;
     height: 25px;
     border-radius: 4px;
+    cursor: pointer;
 }
 .calender-day-cart:hover{
     border: 2px solid var(--green-600);
 }
 
+.level-0 { background-color: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); }
 .level-1{background-color: var(--green-900);}
 .level-2{background-color: var(--green-800);}
 .level-3{background-color: var(--green-700);}
@@ -278,9 +280,19 @@ header{
     border-radius: 10px;
     direction: rtl;
     text-align: right;
+    cursor: pointer;
 }
 
+.task-text {
+    flex: 1;
+    cursor: pointer;
+    padding: 5px;
+}
 
+.task-text:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+    border-radius: 5px;
+}
 
 
 input[type="checkbox"]{
@@ -571,45 +583,6 @@ input[type="checkbox"]{
     background: rgba(255, 255, 255, 0.2);
 }
 
-/* دکمه‌های پومودورو */
-.pomodoro-actions {
-    display: flex;
-    gap: 10px;
-    justify-content: center;
-    margin-top: 15px;
-}
-
-.pomodoro-action-btn {
-    background: var(--bg-3);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    padding: 15px 23px;
-    border-radius: 10px;
-    color: var(--text-primary);
-    cursor: pointer;
-    transition: all 0.2s;
-    font-size: 0.8rem;
-}
-
-.pomodoro-action-btn:hover {
-    background: rgba(255, 255, 255, 0.2);
-    transform: scale(1.05);
-}
-
-/* تقویم - تنظیم level برای روزهای خالی و گذشته */
-.calender-day-cart.level-0 {
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.calender-day-cart.level-0:hover {
-    background: rgba(255, 255, 255, 0.1);
-}
-
-/* روزهای آینده */
-.calender-day-cart.future {
-    opacity: 0.6;
-}
-
 .delete-task-btn{
     background-color: transparent;
     border: none;
@@ -735,6 +708,13 @@ input[type="checkbox"]{
     overflow-x: hidden;
 }
 
+/* استایل برای متن تسک در حالت ادیت */
+.task-text[contenteditable="true"] {
+    background-color: var(--bg-3);
+    border: 1px solid var(--green-600);
+    outline: none;
+    padding: 5px;
+}
 
 
 /* WebKit */
