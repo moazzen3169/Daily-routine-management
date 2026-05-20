@@ -242,6 +242,77 @@ async function handleRoutineToggle(e) {
             await loadStats();
             await loadMonthlyCalendar();
         }
+        
+        // ============================================
+// بررسی و ریست خودکار در شروع روز جدید
+// ============================================
+let lastResetDate = localStorage.getItem('lastResetDate') || '';
+
+async function checkAndResetDailyTasks() {
+    const today = new Date().toISOString().slice(0, 10);
+    
+    // اگر روز عوض شده باشه
+    if (lastResetDate !== today) {
+        console.log('Day changed! Resetting tasks...');
+        
+        try {
+            const formData = new URLSearchParams();
+            formData.append('action', 'reset_daily_tasks');
+            
+            const response = await fetch('api.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: formData.toString()
+            });
+            const result = await response.json();
+            
+            if (result.success) {
+                localStorage.setItem('lastResetDate', today);
+                lastResetDate = today;
+                
+                // رفرش کردن تسک‌ها و آمار
+                if (currentTab === 'routine') {
+                    await loadRoutineTasks();
+                } else {
+                    await loadTodoTasks();
+                }
+                await loadStats();
+                await loadMonthlyCalendar();
+                
+                console.log('Tasks reset successfully for new day!');
+                if (typeof showNotification === 'function') {
+                    showNotification('📅 روز جدید', 'تسک‌های روزانه ریست شدند!');
+                }
+            }
+        } catch (error) {
+            console.error('Error resetting tasks:', error);
+        }
+    }
+}
+
+// تابع برای چک کردن هر دقیقه
+function startDailyResetChecker() {
+    setInterval(() => {
+        checkAndResetDailyTasks();
+    }, 60000);
+    
+    window.addEventListener('focus', () => {
+        checkAndResetDailyTasks();
+    });
+}
+
+// تابع برای چک کردن هر دقیقه (برای تشخیص تغییر روز)
+function startDailyResetChecker() {
+    // چک کردن هر 60 ثانیه
+    setInterval(() => {
+        checkAndResetDailyTasks();
+    }, 60000); // هر دقیقه
+    
+    // همچنین وقتی صفحه focus میشه (برگشت از تب دیگر)
+    window.addEventListener('focus', () => {
+        checkAndResetDailyTasks();
+    });
+}
     } catch (error) {
         console.error('Error:', error);
         checkbox.checked = !isDone;
@@ -1275,6 +1346,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             updateTimerDisplay();
             updatePomodoroUI();
         });
+        
 
         // در انتهای تابع DOMContentLoaded، قبل از console.log('Initialization complete');
 // اعمال فیلتر پیش‌فرض Not Done بعد از بارگذاری تسک‌ها
@@ -1289,4 +1361,9 @@ if (sortSelect && sortSelect.value === 'not done') {
     
     
     console.log('Initialization complete');
+
+    // قبل از console.log('Initialization complete');
+// شروع چک کردن ریست روزانه
+await checkAndResetDailyTasks();
+startDailyResetChecker();
 });

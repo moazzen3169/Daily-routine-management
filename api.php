@@ -1,6 +1,6 @@
 <?php
 error_reporting(E_ALL);
-ini_set('display_errors', 1);
+ini_set('display_errors', 0); // تغییر به 0 برای جلوگیری از نمایش خطاهای HTML
 header('Content-Type: application/json; charset=utf-8');
 date_default_timezone_set('Asia/Tehran');
 
@@ -18,8 +18,53 @@ try {
     exit;
 }
 
-$userId = 1;
 $action = $_POST['action'] ?? $_GET['action'] ?? '';
+
+// ============================================
+// تابع به‌روزرسانی آمار روزانه
+// ============================================
+function updateDailyStats($pdo, $date = null) {
+    if (!$date) $date = date('Y-m-d');
+    
+    // محاسبه آمار امروز
+    $stmt = $pdo->query("SELECT COUNT(*) as total, SUM(is_done) as done FROM routine_tasks");
+    $result = $stmt->fetch(PDO::FETCH_ASSOC);
+    
+    $total = $result['total'];
+    $done = $result['done'] ?? 0;
+    $percentage = $total > 0 ? round(($done / $total) * 100) : 0;
+    
+    // ذخیره در دیتابیس
+    $stmt = $pdo->prepare("
+        INSERT INTO daily_stats (stat_date, completed_count, total_count, percentage) 
+        VALUES (?, ?, ?, ?)
+        ON DUPLICATE KEY UPDATE 
+        completed_count = VALUES(completed_count),
+        total_count = VALUES(total_count),
+        percentage = VALUES(percentage)
+    ");
+    $stmt->execute([$date, $done, $total, $percentage]);
+    
+    return ['total' => $total, 'done' => $done, 'percentage' => $percentage];
+}
+
+// ============================================
+// تابع ریست تسک‌های روزانه
+// ============================================
+function resetDailyTasks($pdo) {
+    // 1. اول آمار روز قبل رو ذخیره کن
+    $yesterday = date('Y-m-d', strtotime('-1 day'));
+    updateDailyStats($pdo, $yesterday);
+    
+    // 2. ریست کردن تسک‌های روتین
+    $stmt = $pdo->prepare("UPDATE routine_tasks SET is_done = 0");
+    $stmt->execute();
+    
+    // 3. ذخیره آمار امروز (بعد از ریست)
+    updateDailyStats($pdo, date('Y-m-d'));
+    
+    return true;
+}
 
 // ============================================
 // آمار
@@ -34,6 +79,27 @@ if ($action == 'get_stats') {
         'done' => (int)$stats['done'],
         'total' => (int)$stats['total']
     ]);
+    
+// ============================================
+// ریست روزانه
+// ============================================
+} elseif ($action == 'reset_daily_tasks') {
+    $result = resetDailyTasks($pdo);
+    echo json_encode(['success' => $result]);
+    
+// ============================================
+// بررسی و ریست خودکار
+// ============================================
+} elseif ($action == 'check_and_reset') {
+    $lastResetDate = $_POST['last_date'] ?? '';
+    $today = date('Y-m-d');
+    
+    if ($lastResetDate !== $today) {
+        resetDailyTasks($pdo);
+        echo json_encode(['success' => true, 'reset' => true, 'new_date' => $today]);
+    } else {
+        echo json_encode(['success' => true, 'reset' => false]);
+    }
     
 // ============================================
 // Routine Tasks
@@ -51,8 +117,7 @@ if ($action == 'get_stats') {
         exit;
     }
     
-    $stmt = $pdo->prepare("SELECT MAX(task_order) as max_order FROM routine_tasks");
-    $stmt->execute();
+    $stmt = $pdo->query("SELECT MAX(task_order) as max_order FROM routine_tasks");
     $maxOrder = $stmt->fetch(PDO::FETCH_ASSOC)['max_order'] ?? 0;
     $newOrder = $maxOrder + 1;
     
@@ -61,10 +126,25 @@ if ($action == 'get_stats') {
     
     if ($result) {
         $newId = $pdo->lastInsertId();
+        updateDailyStats($pdo);
         echo json_encode(['success' => true, 'id' => $newId, 'task_name' => $taskName]);
     } else {
         echo json_encode(['success' => false, 'message' => 'Database insert failed']);
     }
+    
+} elseif ($action == 'update_routine_task') {
+    $taskId = $_POST['task_id'] ?? 0;
+    $taskName = trim($_POST['task_name'] ?? '');
+    
+    if (empty($taskName)) {
+        echo json_encode(['success' => false, 'message' => 'Task name cannot be empty']);
+        exit;
+    }
+    
+    $stmt = $pdo->prepare("UPDATE routine_tasks SET task_name = ? WHERE id = ?");
+    $result = $stmt->execute([$taskName, $taskId]);
+    
+    echo json_encode(['success' => $result]);
     
 } elseif ($action == 'toggle_routine') {
     $taskId = $_POST['task_id'] ?? 0;
@@ -73,6 +153,10 @@ if ($action == 'get_stats') {
     $stmt = $pdo->prepare("UPDATE routine_tasks SET is_done = ? WHERE id = ?");
     $result = $stmt->execute([$isDone, $taskId]);
     
+    if ($result) {
+        updateDailyStats($pdo);
+    }
+    
     echo json_encode(['success' => $result]);
     
 } elseif ($action == 'delete_routine_task') {
@@ -80,6 +164,10 @@ if ($action == 'get_stats') {
     
     $stmt = $pdo->prepare("DELETE FROM routine_tasks WHERE id = ?");
     $result = $stmt->execute([$taskId]);
+    
+    if ($result) {
+        updateDailyStats($pdo);
+    }
     
     echo json_encode(['success' => $result]);
     
@@ -109,6 +197,20 @@ if ($action == 'get_stats') {
         echo json_encode(['success' => false, 'message' => 'Database insert failed']);
     }
     
+} elseif ($action == 'update_todo_task') {
+    $taskId = $_POST['task_id'] ?? 0;
+    $taskName = trim($_POST['task_name'] ?? '');
+    
+    if (empty($taskName)) {
+        echo json_encode(['success' => false, 'message' => 'Task name cannot be empty']);
+        exit;
+    }
+    
+    $stmt = $pdo->prepare("UPDATE todo_tasks SET task_name = ? WHERE id = ?");
+    $result = $stmt->execute([$taskName, $taskId]);
+    
+    echo json_encode(['success' => $result]);
+    
 } elseif ($action == 'toggle_todo') {
     $taskId = $_POST['task_id'] ?? 0;
     $isDone = ($_POST['is_done'] ?? 'false') == 'true' ? 1 : 0;
@@ -125,12 +227,6 @@ if ($action == 'get_stats') {
     $result = $stmt->execute([$taskId]);
     
     echo json_encode(['success' => $result]);
-    
-
-
-
-
-
     
 // ============================================
 // Movies
@@ -157,6 +253,20 @@ if ($action == 'get_stats') {
     } else {
         echo json_encode(['success' => false, 'message' => 'Database insert failed']);
     }
+    
+} elseif ($action == 'update_movie') {
+    $movieId = $_POST['movie_id'] ?? 0;
+    $movieName = trim($_POST['movie_name'] ?? '');
+    
+    if (empty($movieName)) {
+        echo json_encode(['success' => false, 'message' => 'Movie name cannot be empty']);
+        exit;
+    }
+    
+    $stmt = $pdo->prepare("UPDATE movies SET movie_name = ? WHERE id = ?");
+    $result = $stmt->execute([$movieName, $movieId]);
+    
+    echo json_encode(['success' => $result]);
     
 } elseif ($action == 'toggle_movie') {
     $movieId = $_POST['movie_id'] ?? 0;
@@ -201,6 +311,20 @@ if ($action == 'get_stats') {
         echo json_encode(['success' => false, 'message' => 'Database insert failed']);
     }
     
+} elseif ($action == 'update_book') {
+    $bookId = $_POST['book_id'] ?? 0;
+    $bookName = trim($_POST['book_name'] ?? '');
+    
+    if (empty($bookName)) {
+        echo json_encode(['success' => false, 'message' => 'Book name cannot be empty']);
+        exit;
+    }
+    
+    $stmt = $pdo->prepare("UPDATE books SET book_name = ? WHERE id = ?");
+    $result = $stmt->execute([$bookName, $bookId]);
+    
+    echo json_encode(['success' => $result]);
+    
 } elseif ($action == 'toggle_book') {
     $bookId = $_POST['book_id'] ?? 0;
     $isRead = ($_POST['is_read'] ?? 'false') == 'true' ? 1 : 0;
@@ -228,9 +352,10 @@ if ($action == 'get_stats') {
     $endDate = date('Y-m-t', strtotime($startDate));
     
     $stmt = $pdo->prepare("
-        SELECT stat_date, percentage 
+        SELECT stat_date, percentage, completed_count, total_count
         FROM daily_stats 
         WHERE stat_date BETWEEN ? AND ?
+        ORDER BY stat_date
     ");
     $stmt->execute([$startDate, $endDate]);
     $stats = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -240,7 +365,9 @@ if ($action == 'get_stats') {
         $dayNum = (int)substr($stat['stat_date'], 8, 2);
         $result[] = [
             'jalali_day' => $dayNum,
-            'percentage' => (int)$stat['percentage']
+            'percentage' => (int)$stat['percentage'],
+            'completed' => (int)$stat['completed_count'],
+            'total' => (int)$stat['total_count']
         ];
     }
     
