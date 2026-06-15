@@ -1,24 +1,34 @@
 <?php
 error_reporting(E_ALL);
-ini_set('display_errors', 0); // تغییر به 0 برای جلوگیری از نمایش خطاهای HTML
-header('Content-Type: application/json; charset=utf-8');
-date_default_timezone_set('Asia/Tehran');
-
-// اتصال به دیتابیس
-$host = 'localhost';
-$dbname = 'routine_manager';
-$username = 'root';
-$password = '';
-
-try {
-    $pdo = new PDO("mysql:host=$host;dbname=$dbname;charset=utf8mb4", $username, $password);
-    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-} catch(PDOException $e) {
-    echo json_encode(['error' => 'Database connection failed: ' . $e->getMessage()]);
-    exit;
-}
+ini_set('display_errors', 0);
+require_once 'config.php';
 
 $action = $_POST['action'] ?? $_GET['action'] ?? '';
+
+// ============================================
+// Helper Functions for Settings
+// ============================================
+function getSetting($pdo, $key, $default = null) {
+    try {
+        $stmt = $pdo->prepare("SELECT setting_value FROM settings WHERE setting_key = ?");
+        $stmt->execute([$key]);
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $result ? $result['setting_value'] : $default;
+    } catch (Exception $e) {
+        return $default;
+    }
+}
+
+function setSetting($pdo, $key, $value) {
+    $stmt = $pdo->prepare("INSERT INTO settings (setting_key, setting_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)");
+    $stmt->execute([$key, $value]);
+}
+
+// Ensure settings table exists and optimized
+$pdo->exec("CREATE TABLE IF NOT EXISTS settings (
+    setting_key VARCHAR(50) PRIMARY KEY,
+    setting_value TEXT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
 // ============================================
 // تابع به‌روزرسانی آمار روزانه
@@ -26,12 +36,12 @@ $action = $_POST['action'] ?? $_GET['action'] ?? '';
 function updateDailyStats($pdo, $date = null) {
     if (!$date) $date = date('Y-m-d');
     
-    // محاسبه آمار امروز
+    // محاسبه آمار
     $stmt = $pdo->query("SELECT COUNT(*) as total, SUM(is_done) as done FROM routine_tasks");
     $result = $stmt->fetch(PDO::FETCH_ASSOC);
     
-    $total = $result['total'];
-    $done = $result['done'] ?? 0;
+    $total = (int)($result['total'] ?? 0);
+    $done = (int)($result['done'] ?? 0);
     $percentage = $total > 0 ? round(($done / $total) * 100) : 0;
     
     // ذخیره در دیتابیس
@@ -52,54 +62,65 @@ function updateDailyStats($pdo, $date = null) {
 // تابع ریست تسک‌های روزانه
 // ============================================
 function resetDailyTasks($pdo) {
-    // 1. اول آمار روز قبل رو ذخیره کن
-    $yesterday = date('Y-m-d', strtotime('-1 day'));
-    updateDailyStats($pdo, $yesterday);
+    $today = date('Y-m-d');
+    $lastResetDate = getSetting($pdo, 'last_reset_date');
     
-    // 2. ریست کردن تسک‌های روتین
-    $stmt = $pdo->prepare("UPDATE routine_tasks SET is_done = 0");
-    $stmt->execute();
+    if ($lastResetDate && $lastResetDate !== $today) {
+        // 1. Save stats for the last active date before resetting
+        updateDailyStats($pdo, $lastResetDate);
+
+        // 2. Reset routine tasks
+        $pdo->prepare("UPDATE routine_tasks SET is_done = 0")->execute();
+
+        // 3. Update last reset date
+        setSetting($pdo, 'last_reset_date', $today);
+
+        // 4. Save initial stats for today
+        updateDailyStats($pdo, $today);
+
+        return true;
+    } elseif (!$lastResetDate) {
+        // Initial setup
+        setSetting($pdo, 'last_reset_date', $today);
+        updateDailyStats($pdo, $today);
+    }
     
-    // 3. ذخیره آمار امروز (بعد از ریست)
-    updateDailyStats($pdo, date('Y-m-d'));
-    
-    return true;
+    return false;
 }
 
 // ============================================
 // آمار
 // ============================================
 if ($action == 'get_stats') {
-    $stmt = $pdo->query("SELECT COUNT(*) as total, SUM(is_done) as done FROM routine_tasks");
+    $stmt = $pdo->query("SELECT COUNT(*) as total, SUM(CASE WHEN is_done = 1 THEN 1 ELSE 0 END) as done FROM routine_tasks");
     $stats = $stmt->fetch(PDO::FETCH_ASSOC);
     
+    $total = (int)($stats['total'] ?? 0);
+    $done = (int)($stats['done'] ?? 0);
+
     echo json_encode([
         'success' => true,
-        'percentage' => $stats['total'] > 0 ? round(($stats['done'] / $stats['total']) * 100) : 0,
-        'done' => (int)$stats['done'],
-        'total' => (int)$stats['total']
+        'percentage' => $total > 0 ? round(($done / $total) * 100) : 0,
+        'done' => $done,
+        'total' => $total
     ]);
     
 // ============================================
 // ریست روزانه
 // ============================================
 } elseif ($action == 'reset_daily_tasks') {
-    $result = resetDailyTasks($pdo);
+    $stmt = $pdo->prepare("UPDATE routine_tasks SET is_done = 0");
+    $result = $stmt->execute();
+    updateDailyStats($pdo, date('Y-m-d'));
     echo json_encode(['success' => $result]);
     
 // ============================================
 // بررسی و ریست خودکار
 // ============================================
 } elseif ($action == 'check_and_reset') {
-    $lastResetDate = $_POST['last_date'] ?? '';
+    $resetPerformed = resetDailyTasks($pdo);
     $today = date('Y-m-d');
-    
-    if ($lastResetDate !== $today) {
-        resetDailyTasks($pdo);
-        echo json_encode(['success' => true, 'reset' => true, 'new_date' => $today]);
-    } else {
-        echo json_encode(['success' => true, 'reset' => false]);
-    }
+    echo json_encode(['success' => true, 'reset' => $resetPerformed, 'new_date' => $today]);
     
 // ============================================
 // Routine Tasks

@@ -36,7 +36,6 @@ function gregorianToJalali(gy, gm, gd) {
 // متغیرهای عمومی
 // ============================================
 let currentTab = 'routine';
-let currentMonth = new Date();
 let timerInterval = null;
 let timerSeconds = 25 * 60;
 let isRunning = false;
@@ -137,8 +136,6 @@ async function loadStats() {
         const data = await response.json();
         
         if (data.success) {
-            console.log('Stats loaded:', data); // برای دیباگ
-            
             // Progress Bar
             const progressBar = document.querySelector('.progress-bar');
             if (progressBar) progressBar.textContent = data.percentage + '%';
@@ -147,10 +144,8 @@ async function loadStats() {
             const progressFill = document.querySelector('.Progress-fill');
             if (progressFill) progressFill.style.width = data.percentage + '%';
             
-            // پیدا کردن همه کارت‌های main-data
             const mainDataElements = document.querySelectorAll('.main-data');
             
-            // کارت اول (Progress Today)
             if (mainDataElements[0]) {
                 const dataSpan = mainDataElements[0].querySelector('.data');
                 if (dataSpan) {
@@ -158,13 +153,11 @@ async function loadStats() {
                 }
             }
             
-            // کارت دوم (Task Done)
             if (mainDataElements[1]) {
                 const dataSpan = mainDataElements[1].querySelector('.data');
                 if (dataSpan) dataSpan.textContent = data.done;
             }
             
-            // کارت سوم (All Tasks)
             if (mainDataElements[2]) {
                 const dataSpan = mainDataElements[2].querySelector('.data');
                 if (dataSpan) dataSpan.textContent = data.total;
@@ -212,6 +205,9 @@ async function loadRoutineTasks() {
             document.querySelectorAll('.task-text[data-type="routine"]').forEach(span => {
                 span.addEventListener('dblclick', () => showEditTaskModal(span.getAttribute('data-id'), 'routine', span.textContent));
             });
+
+            const sortSelect = document.querySelector('.task-sort');
+            if (sortSelect) filterTasks(sortSelect.value);
         }
     } catch (error) {
         console.error('Error loading routine tasks:', error);
@@ -242,78 +238,6 @@ async function handleRoutineToggle(e) {
             await loadStats();
             await loadGitHubCalendar();
         }
-        
-        // ============================================
-// بررسی و ریست خودکار در شروع روز جدید
-// ============================================
-let lastResetDate = localStorage.getItem('lastResetDate') || '';
-
-async function checkAndResetDailyTasks() {
-    const now = new Date();
-    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-    
-    // اگر روز عوض شده باشه
-    if (lastResetDate !== today) {
-        console.log('Day changed! Resetting tasks...');
-        
-        try {
-            const formData = new URLSearchParams();
-            formData.append('action', 'reset_daily_tasks');
-            
-            const response = await fetch('api.php', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: formData.toString()
-            });
-            const result = await response.json();
-            
-            if (result.success) {
-                localStorage.setItem('lastResetDate', today);
-                lastResetDate = today;
-                
-                // رفرش کردن تسک‌ها و آمار
-                if (currentTab === 'routine') {
-                    await loadRoutineTasks();
-                } else {
-                    await loadTodoTasks();
-                }
-                await loadStats();
-                await loadGitHubCalendar();
-                
-                console.log('Tasks reset successfully for new day!');
-                if (typeof showNotification === 'function') {
-                    showNotification('📅 روز جدید', 'تسک‌های روزانه ریست شدند!');
-                }
-            }
-        } catch (error) {
-            console.error('Error resetting tasks:', error);
-        }
-    }
-}
-
-// تابع برای چک کردن هر دقیقه
-function startDailyResetChecker() {
-    setInterval(() => {
-        checkAndResetDailyTasks();
-    }, 60000);
-    
-    window.addEventListener('focus', () => {
-        checkAndResetDailyTasks();
-    });
-}
-
-// تابع برای چک کردن هر دقیقه (برای تشخیص تغییر روز)
-function startDailyResetChecker() {
-    // چک کردن هر 60 ثانیه
-    setInterval(() => {
-        checkAndResetDailyTasks();
-    }, 60000); // هر دقیقه
-    
-    // همچنین وقتی صفحه focus میشه (برگشت از تب دیگر)
-    window.addEventListener('focus', () => {
-        checkAndResetDailyTasks();
-    });
-}
     } catch (error) {
         console.error('Error:', error);
         checkbox.checked = !isDone;
@@ -325,7 +249,7 @@ async function handleDeleteRoutine(e) {
     if (!btn) return;
     const taskId = btn.getAttribute('data-id');
     
-    if (!confirm('Are you sure you want to delete this task?')) return;
+    if (!confirm('آیا از حذف این مورد اطمینان دارید؟')) return;
     
     try {
         const formData = new URLSearchParams();
@@ -370,7 +294,6 @@ async function updateRoutineTask(taskId, newName) {
         }
     } catch (error) {
         console.error('Error:', error);
-        alert('Error updating task');
     }
 }
 
@@ -411,6 +334,9 @@ async function loadTodoTasks() {
             document.querySelectorAll('.task-text[data-type="todo"]').forEach(span => {
                 span.addEventListener('dblclick', () => showEditTaskModal(span.getAttribute('data-id'), 'todo', span.textContent));
             });
+
+            const sortSelect = document.querySelector('.task-sort');
+            if (sortSelect) filterTasks(sortSelect.value);
         }
     } catch (error) {
         console.error('Error loading todo tasks:', error);
@@ -451,7 +377,7 @@ async function handleDeleteTodo(e) {
     if (!btn) return;
     const taskId = btn.getAttribute('data-id');
     
-    if (!confirm('Are you sure you want to delete this task?')) return;
+    if (!confirm('آیا از حذف این مورد اطمینان دارید؟')) return;
     
     try {
         const formData = new URLSearchParams();
@@ -494,7 +420,6 @@ async function updateTodoTask(taskId, newName) {
         }
     } catch (error) {
         console.error('Error:', error);
-        alert('Error updating task');
     }
 }
 
@@ -514,7 +439,6 @@ async function loadMovies() {
             data.movies.forEach(movie => {
                 const label = document.createElement('label');
                 label.className = 'task';
-                label.setAttribute('data-movie-id', movie.id);
                 label.innerHTML = `
                     <input type="checkbox" class="movie-checkbox" data-id="${movie.id}" ${movie.is_watched ? 'checked' : ''}>
                     <span class="movie-text" data-id="${movie.id}">${escapeHtml(movie.movie_name)}</span>
@@ -572,7 +496,7 @@ async function handleDeleteMovie(e) {
     if (!btn) return;
     const movieId = btn.getAttribute('data-id');
     
-    if (!confirm('Are you sure you want to delete this movie?')) return;
+    if (!confirm('آیا از حذف این فیلم اطمینان دارید؟')) return;
     
     try {
         const formData = new URLSearchParams();
@@ -610,12 +534,9 @@ async function updateMovie(movieId, newName) {
         
         if (result.success) {
             await loadMovies();
-        } else {
-            alert(result.message || 'Error updating movie');
         }
     } catch (error) {
         console.error('Error:', error);
-        alert('Error updating movie');
     }
 }
 
@@ -635,7 +556,6 @@ async function loadBooks() {
             data.books.forEach(book => {
                 const label = document.createElement('label');
                 label.className = 'task';
-                label.setAttribute('data-book-id', book.id);
                 label.innerHTML = `
                     <input type="checkbox" class="book-checkbox" data-id="${book.id}" ${book.is_read ? 'checked' : ''}>
                     <span class="book-text" data-id="${book.id}">${escapeHtml(book.book_name)}</span>
@@ -693,7 +613,7 @@ async function handleDeleteBook(e) {
     if (!btn) return;
     const bookId = btn.getAttribute('data-id');
     
-    if (!confirm('Are you sure you want to delete this book?')) return;
+    if (!confirm('آیا از حذف این کتاب اطمینان دارید؟')) return;
     
     try {
         const formData = new URLSearchParams();
@@ -731,13 +651,48 @@ async function updateBook(bookId, newName) {
         
         if (result.success) {
             await loadBooks();
-        } else {
-            alert(result.message || 'Error updating book');
         }
     } catch (error) {
         console.error('Error:', error);
-        alert('Error updating book');
     }
+}
+
+// ============================================
+// بررسی و ریست خودکار در شروع روز جدید
+// ============================================
+async function checkAndResetDailyTasks() {
+    try {
+        const formData = new URLSearchParams();
+        formData.append('action', 'check_and_reset');
+
+        const response = await fetch('api.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: formData.toString()
+        });
+        const result = await response.json();
+
+        if (result.success && result.reset) {
+            console.log('Day changed! Tasks reset successfully.');
+
+            if (currentTab === 'routine') {
+                await loadRoutineTasks();
+            } else {
+                await loadTodoTasks();
+            }
+            await loadStats();
+            await loadGitHubCalendar();
+
+            showNotification('📅 روز جدید', 'تسک‌های روزانه برای امروز آماده هستند!');
+        }
+    } catch (error) {
+        console.error('Error checking for daily reset:', error);
+    }
+}
+
+function startDailyResetChecker() {
+    setInterval(checkAndResetDailyTasks, 300000); // هر 5 دقیقه
+    window.addEventListener('focus', checkAndResetDailyTasks);
 }
 
 // ============================================
@@ -765,7 +720,7 @@ async function saveEditTask() {
     const newName = input?.value.trim();
     
     if (!newName) {
-        alert('Task name cannot be empty');
+        alert('نام تسک نمی‌تواند خالی باشد');
         return;
     }
     
@@ -780,14 +735,14 @@ async function saveEditTask() {
 }
 
 function showEditMovieModal(movieId, currentName) {
-    const newName = prompt('Edit movie name:', currentName);
+    const newName = prompt('ویرایش نام فیلم:', currentName);
     if (newName && newName.trim() !== currentName) {
         updateMovie(movieId, newName.trim());
     }
 }
 
 function showEditBookModal(bookId, currentName) {
-    const newName = prompt('Edit book name:', currentName);
+    const newName = prompt('ویرایش نام کتاب:', currentName);
     if (newName && newName.trim() !== currentName) {
         updateBook(bookId, newName.trim());
     }
@@ -802,12 +757,9 @@ function updateTimerDisplay() {
     const timerElement = document.querySelector('.timer');
     const pomodoroTimeElement = document.querySelector('.pomodoro-time');
     
-    if (timerElement) {
-        timerElement.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-    }
-    if (pomodoroTimeElement && !isRunning) {
-        pomodoroTimeElement.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-    }
+    const timeStr = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+    if (timerElement) timerElement.textContent = timeStr;
+    if (pomodoroTimeElement && !isRunning) pomodoroTimeElement.textContent = timeStr;
 }
 
 function startTimer() {
@@ -826,20 +778,17 @@ function startTimer() {
             if (currentMode === 'work') {
                 currentMode = 'rest';
                 timerSeconds = 5 * 60;
-                updateTimerDisplay();
-                updatePomodoroUI();
-                showNotification('✅ Work Complete!', 'Time for a 5-minute break!');
-                alert('✅ Work time finished! Take a 5-minute break.');
-                startTimer();
+                showNotification('✅ زمان کار تمام شد!', '۵ دقیقه استراحت کنید.');
+                alert('✅ زمان کار تمام شد! ۵ دقیقه استراحت کنید.');
             } else {
                 currentMode = 'work';
                 timerSeconds = 25 * 60;
-                updateTimerDisplay();
-                updatePomodoroUI();
-                showNotification('☕ Break Complete!', 'Time to get back to work!');
-                alert('☕ Break time finished! Back to work.');
-                startTimer();
+                showNotification('☕ استراحت تمام شد!', 'به کار بازگردید.');
+                alert('☕ استراحت تمام شد! به کار بازگردید.');
             }
+            updateTimerDisplay();
+            updatePomodoroUI();
+            startTimer();
         }
     }, 1000);
 }
@@ -850,28 +799,25 @@ function stopTimer() {
         timerInterval = null;
     }
     isRunning = false;
-    
     const startBtn = document.querySelector('.start-btn');
     if (startBtn) startBtn.textContent = 'START';
 }
 
 function updatePomodoroUI() {
-    const workBtn = document.querySelectorAll('.pomodoro-option')[1];
-    const restBtn = document.querySelectorAll('.pomodoro-option')[0];
-    
-    if (workBtn && restBtn) {
+    const options = document.querySelectorAll('.pomodoro-option');
+    if (options.length >= 2) {
         if (currentMode === 'work') {
-            workBtn.classList.add('op-active');
-            restBtn.classList.remove('op-active');
+            options[1].classList.add('op-active');
+            options[0].classList.remove('op-active');
         } else {
-            restBtn.classList.add('op-active');
-            workBtn.classList.remove('op-active');
+            options[0].classList.add('op-active');
+            options[1].classList.remove('op-active');
         }
     }
 }
 
 // ============================================
-// مدیریت مودال تسک
+// مدیریت مودال‌ها
 // ============================================
 function showTaskModal() {
     const modal = document.getElementById('taskModal');
@@ -895,7 +841,7 @@ async function addTaskFromModal() {
     const taskName = input?.value.trim();
     
     if (!taskName) {
-        alert('Please enter a task name');
+        alert('لطفاً نام تسک را وارد کنید');
         return;
     }
     
@@ -922,18 +868,12 @@ async function addTaskFromModal() {
             } else {
                 await loadTodoTasks();
             }
-        } else {
-            alert(result.message || 'Error adding task');
         }
     } catch (error) {
         console.error('Error:', error);
-        alert('Error adding task');
     }
 }
 
-// ============================================
-// مدیریت مودال زمان پومودورو
-// ============================================
 function showTimeModal() {
     const modal = document.getElementById('timeModal');
     if (modal) {
@@ -956,22 +896,13 @@ function addTimeFromModal() {
     const minutes = parseInt(input?.value);
     
     if (isNaN(minutes) || minutes < 1) {
-        alert('Please enter a valid number of minutes (minimum 1)');
+        alert('لطفاً عدد معتبری وارد کنید');
         return;
     }
     
     timerSeconds += minutes * 60;
     updateTimerDisplay();
     hideTimeModal();
-    
-    if (!isRunning) {
-        const pomodoroTimeElement = document.querySelector('.pomodoro-time');
-        if (pomodoroTimeElement) {
-            const mins = Math.floor(timerSeconds / 60);
-            const secs = timerSeconds % 60;
-            pomodoroTimeElement.textContent = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
-        }
-    }
 }
 
 // ============================================
@@ -989,46 +920,63 @@ async function loadGitHubCalendar() {
             });
             
             const calendarContainer = document.getElementById('githubCalendar');
-            if (!calendarContainer) return;
+            const monthsContainer = document.getElementById('calendarMonths');
+            if (!calendarContainer || !monthsContainer) return;
             
             calendarContainer.innerHTML = '';
+            monthsContainer.innerHTML = '';
             
             const endDate = new Date();
             const startDate = new Date();
             startDate.setDate(endDate.getDate() - 364);
-
-            const startDay = startDate.getDay();
-            for (let i = 0; i < startDay; i++) {
-                const emptyDiv = document.createElement('div');
-                emptyDiv.className = 'calendar-day level-0';
-                calendarContainer.appendChild(emptyDiv);
-            }
             
+            // Adjust to start of the week (Sunday)
+            const startDay = startDate.getDay();
+            startDate.setDate(startDate.getDate() - startDay);
+
+            const jalaliMonths = ['فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور', 'مهر', 'آبان', 'آذر', 'دی', 'بهمن', 'اسفند'];
+            let lastMonth = -1;
+
             const tempDate = new Date(startDate);
-            while (tempDate <= endDate) {
+            let dayCounter = 0;
+
+            while (tempDate <= endDate || dayCounter % 7 !== 0) {
                 const dateStr = `${tempDate.getFullYear()}-${String(tempDate.getMonth() + 1).padStart(2, '0')}-${String(tempDate.getDate()).padStart(2, '0')}`;
                 const percentage = statsMap[dateStr] || 0;
+                const [jy, jm, jd] = gregorianToJalali(tempDate.getFullYear(), tempDate.getMonth() + 1, tempDate.getDate());
+
+                // Add month labels
+                if (dayCounter % 7 === 0) {
+                    const monthLabel = document.createElement('div');
+                    monthLabel.style.gridColumn = `span 1`;
+                    if (jm !== lastMonth) {
+                        monthLabel.textContent = jalaliMonths[jm - 1];
+                        lastMonth = jm;
+                    }
+                    monthsContainer.appendChild(monthLabel);
+                }
 
                 let level = 0;
-                if (percentage > 0 && percentage < 25) level = 1;
-                else if (percentage >= 25 && percentage < 50) level = 2;
-                else if (percentage >= 50 && percentage < 75) level = 3;
-                else if (percentage >= 75) level = 4;
+                if (tempDate <= endDate) {
+                    if (percentage > 0 && percentage < 25) level = 1;
+                    else if (percentage >= 25 && percentage < 50) level = 2;
+                    else if (percentage >= 50 && percentage < 75) level = 3;
+                    else if (percentage >= 75) level = 4;
+                }
                 
                 const dayDiv = document.createElement('div');
                 dayDiv.className = `calendar-day level-${level}`;
-
-                const [jy, jm, jd] = gregorianToJalali(tempDate.getFullYear(), tempDate.getMonth() + 1, tempDate.getDate());
-                dayDiv.title = `${jy}/${jm}/${jd} : ${percentage}%`;
+                if (tempDate <= endDate) {
+                    dayDiv.title = `${jy}/${jm}/${jd} : ${percentage}%`;
+                }
 
                 calendarContainer.appendChild(dayDiv);
                 tempDate.setDate(tempDate.getDate() + 1);
+                dayCounter++;
             }
 
             const wrapper = document.querySelector('.calendar-wrapper');
-            if (wrapper) {
-                wrapper.scrollLeft = wrapper.scrollWidth;
-            }
+            if (wrapper) wrapper.scrollLeft = wrapper.scrollWidth;
         }
     } catch (error) {
         console.error('Error loading github calendar:', error);
@@ -1040,7 +988,6 @@ async function loadGitHubCalendar() {
 // ============================================
 function switchTab(tab) {
     currentTab = tab;
-    
     const tabs = document.querySelectorAll('.tab');
     tabs.forEach(t => t.classList.remove('active'));
     
@@ -1070,307 +1017,131 @@ function filterTasks(filter) {
 }
 
 // ============================================
-// Event Listeners
+// تنظیم Event Listeners
 // ============================================
-function setupFormListeners() {
-    // دکمه افزودن تسک
-    const addTaskBtn = document.querySelector('.add-task');
-    if (addTaskBtn) {
-        const newBtn = addTaskBtn.cloneNode(true);
-        addTaskBtn.parentNode.replaceChild(newBtn, addTaskBtn);
-        newBtn.addEventListener('click', (e) => {
-            e.preventDefault();
-            showTaskModal();
+function setupEventListeners() {
+    // افزودن تسک
+    document.querySelector('.add-task')?.addEventListener('click', showTaskModal);
+    document.getElementById('addTaskConfirm')?.addEventListener('click', addTaskFromModal);
+    document.getElementById('closeTaskModal')?.addEventListener('click', hideTaskModal);
+    document.getElementById('cancelTaskModal')?.addEventListener('click', hideTaskModal);
+    
+    // ویرایش تسک
+    document.getElementById('editTaskConfirm')?.addEventListener('click', saveEditTask);
+    document.getElementById('closeEditModal')?.addEventListener('click', hideEditTaskModal);
+    document.getElementById('cancelEditModal')?.addEventListener('click', hideEditTaskModal);
+    
+    // پومودورو
+    document.querySelector('.start-btn')?.addEventListener('click', () => isRunning ? stopTimer() : startTimer());
+    document.querySelector('.add-time')?.addEventListener('click', showTimeModal);
+    document.getElementById('addTimeConfirm')?.addEventListener('click', addTimeFromModal);
+    document.getElementById('closeTimeModal')?.addEventListener('click', hideTimeModal);
+    document.getElementById('cancelTimeModal')?.addEventListener('click', hideTimeModal);
+    
+    const pomodoroOptions = document.querySelectorAll('.pomodoro-option');
+    if (pomodoroOptions.length >= 2) {
+        pomodoroOptions[1].addEventListener('click', () => {
+            stopTimer(); currentMode = 'work'; timerSeconds = 25 * 60; updateTimerDisplay(); updatePomodoroUI();
+        });
+        pomodoroOptions[0].addEventListener('click', () => {
+            stopTimer(); currentMode = 'rest'; timerSeconds = 5 * 60; updateTimerDisplay(); updatePomodoroUI();
         });
     }
-    
-    // دکمه افزودن زمان پومودورو
-    const addTimeBtn = document.querySelector('.add-time');
-    if (addTimeBtn) {
-        const newTimeBtn = addTimeBtn.cloneNode(true);
-        addTimeBtn.parentNode.replaceChild(newTimeBtn, addTimeBtn);
-        newTimeBtn.addEventListener('click', (e) => {
-            e.preventDefault();
-            showTimeModal();
-        });
+
+    // تب‌ها
+    const tabs = document.querySelectorAll('.tab');
+    if (tabs.length >= 2) {
+        tabs[0].addEventListener('click', () => switchTab('routine'));
+        tabs[1].addEventListener('click', () => switchTab('todo'));
     }
-    
-    // Event Listeners مودال تسک
-    const closeTaskModal = document.getElementById('closeTaskModal');
-    const cancelTaskModal = document.getElementById('cancelTaskModal');
-    const addTaskConfirm = document.getElementById('addTaskConfirm');
-    const taskModal = document.getElementById('taskModal');
-    const taskInput = document.getElementById('newTaskTitle');
-    
-    if (closeTaskModal) closeTaskModal.addEventListener('click', hideTaskModal);
-    if (cancelTaskModal) cancelTaskModal.addEventListener('click', hideTaskModal);
-    if (addTaskConfirm) addTaskConfirm.addEventListener('click', addTaskFromModal);
-    if (taskModal) taskModal.addEventListener('click', (e) => {
-        if (e.target === taskModal) hideTaskModal();
+
+    // فیلتر
+    document.querySelector('.task-sort')?.addEventListener('change', (e) => filterTasks(e.target.value));
+
+    // فیلم و کتاب
+    document.querySelector('.movie-list-head form')?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const input = document.getElementById('movie-name');
+        const name = input?.value.trim();
+        if (!name) return;
+
+        const formData = new URLSearchParams();
+        formData.append('action', 'add_movie');
+        formData.append('movie_name', name);
+        const response = await fetch('api.php', { method: 'POST', body: formData });
+        const result = await response.json();
+        if (result.success) { input.value = ''; await loadMovies(); }
     });
-    if (taskInput) taskInput.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') addTaskFromModal();
+
+    document.querySelector('.book-list-head form')?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const input = document.getElementById('book-name');
+        const name = input?.value.trim();
+        if (!name) return;
+
+        const formData = new URLSearchParams();
+        formData.append('action', 'add_book');
+        formData.append('book_name', name);
+        const response = await fetch('api.php', { method: 'POST', body: formData });
+        const result = await response.json();
+        if (result.success) { input.value = ''; await loadBooks(); }
     });
-    
-    // Event Listeners مودال ویرایش
-    const closeEditModal = document.getElementById('closeEditModal');
-    const cancelEditModal = document.getElementById('cancelEditModal');
-    const editTaskConfirm = document.getElementById('editTaskConfirm');
-    const editModal = document.getElementById('editTaskModal');
-    const editInput = document.getElementById('editTaskTitle');
-    
-    if (closeEditModal) closeEditModal.addEventListener('click', hideEditTaskModal);
-    if (cancelEditModal) cancelEditModal.addEventListener('click', hideEditTaskModal);
-    if (editTaskConfirm) editTaskConfirm.addEventListener('click', saveEditTask);
-    if (editModal) editModal.addEventListener('click', (e) => {
-        if (e.target === editModal) hideEditTaskModal();
+
+    // اکسپورت
+    document.getElementById('exportTasksBtn')?.addEventListener('click', () => {
+        const modal = document.getElementById('exportModal');
+        if (modal) { modal.style.display = 'flex'; modal.setAttribute('data-export-type', 'tasks'); }
     });
-    if (editInput) editInput.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') saveEditTask();
-    });
-    
-    // Event Listeners مودال زمان
-    const closeTimeModal = document.getElementById('closeTimeModal');
-    const cancelTimeModal = document.getElementById('cancelTimeModal');
-    const addTimeConfirm = document.getElementById('addTimeConfirm');
-    const timeModal = document.getElementById('timeModal');
-    const timeInput = document.getElementById('addMinutesInput');
-    
-    if (closeTimeModal) closeTimeModal.addEventListener('click', hideTimeModal);
-    if (cancelTimeModal) cancelTimeModal.addEventListener('click', hideTimeModal);
-    if (addTimeConfirm) addTimeConfirm.addEventListener('click', addTimeFromModal);
-    if (timeModal) timeModal.addEventListener('click', (e) => {
-        if (e.target === timeModal) hideTimeModal();
-    });
-    if (timeInput) timeInput.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') addTimeFromModal();
-    });
-    
-    // دکمه Export اصلی
-    const exportBtn = document.getElementById('exportTasksBtn');
-    if (exportBtn) {
-        exportBtn.addEventListener('click', () => {
-            const modal = document.getElementById('exportModal');
-            if (modal) {
-                modal.style.display = 'flex';
-                // ذخیره نوع برای export
-                modal.setAttribute('data-export-type', 'tasks');
-            }
-        });
-    }
-    
-    // دکمه‌های Export در لیست فیلم و کتاب
+
     document.querySelectorAll('.export-list-btn').forEach(btn => {
         btn.addEventListener('click', () => {
-            const type = btn.getAttribute('data-type');
             const modal = document.getElementById('exportModal');
-            if (modal) {
-                modal.style.display = 'flex';
-                modal.setAttribute('data-export-type', type);
-            }
+            if (modal) { modal.style.display = 'flex'; modal.setAttribute('data-export-type', btn.getAttribute('data-type')); }
         });
     });
-    
-    // مودال Export
-    const closeExportModal = document.getElementById('closeExportModal');
-    const exportCSV = document.getElementById('exportCSV');
-    const exportJSON = document.getElementById('exportJSON');
-    const exportModal = document.getElementById('exportModal');
-    
-    if (closeExportModal) closeExportModal.addEventListener('click', () => {
-        if (exportModal) exportModal.style.display = 'none';
+
+    document.getElementById('exportCSV')?.addEventListener('click', () => {
+        const type = document.getElementById('exportModal')?.getAttribute('data-export-type') || 'tasks';
+        exportData(type, 'csv'); document.getElementById('exportModal').style.display = 'none';
     });
-    if (exportModal) exportModal.addEventListener('click', (e) => {
-        if (e.target === exportModal) exportModal.style.display = 'none';
+
+    document.getElementById('exportJSON')?.addEventListener('click', () => {
+        const type = document.getElementById('exportModal')?.getAttribute('data-export-type') || 'tasks';
+        exportData(type, 'json'); document.getElementById('exportModal').style.display = 'none';
     });
-    if (exportCSV) {
-        exportCSV.addEventListener('click', () => {
-            const type = exportModal?.getAttribute('data-export-type') || 'tasks';
-            exportData(type, 'csv');
-            if (exportModal) exportModal.style.display = 'none';
-        });
-    }
-    if (exportJSON) {
-        exportJSON.addEventListener('click', () => {
-            const type = exportModal?.getAttribute('data-export-type') || 'tasks';
-            exportData(type, 'json');
-            if (exportModal) exportModal.style.display = 'none';
-        });
-    }
     
-    // فرم افزودن فیلم
-    const movieForm = document.querySelector('.movie-list-head form');
-    if (movieForm) {
-        movieForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const input = document.querySelector('#movie-name');
-            const movieName = input?.value.trim();
-            
-            if (!movieName) {
-                alert('Please enter a movie name');
-                return;
-            }
-            
-            try {
-                const formData = new URLSearchParams();
-                formData.append('action', 'add_movie');
-                formData.append('movie_name', movieName);
-                
-                const response = await fetch('api.php', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                    body: formData.toString()
-                });
-                const result = await response.json();
-                
-                if (result.success) {
-                    if (input) input.value = '';
-                    await loadMovies();
-                } else {
-                    alert(result.message || 'Error adding movie');
-                }
-            } catch (error) {
-                console.error('Error:', error);
-                alert('Error adding movie');
-            }
-        });
-    }
-    
-    // فرم افزودن کتاب
-    const bookForm = document.querySelector('.book-list-head form');
-    if (bookForm) {
-        bookForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const input = document.querySelector('#book-name');
-            const bookName = input?.value.trim();
-            
-            if (!bookName) {
-                alert('Please enter a book name');
-                return;
-            }
-            
-            try {
-                const formData = new URLSearchParams();
-                formData.append('action', 'add_book');
-                formData.append('book_name', bookName);
-                
-                const response = await fetch('api.php', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                    body: formData.toString()
-                });
-                const result = await response.json();
-                
-                if (result.success) {
-                    if (input) input.value = '';
-                    await loadBooks();
-                } else {
-                    alert(result.message || 'Error adding book');
-                }
-            } catch (error) {
-                console.error('Error:', error);
-                alert('Error adding book');
-            }
-        });
-    }
+    document.getElementById('closeExportModal')?.addEventListener('click', () => document.getElementById('exportModal').style.display = 'none');
 }
 
 // ============================================
 // مقداردهی اولیه
 // ============================================
 document.addEventListener('DOMContentLoaded', async () => {
-    console.log('DOM loaded, initializing...');
+    console.log('Initializing application...');
     
-    // درخواست مجوز اعلان
     if (Notification.permission !== 'granted' && Notification.permission !== 'denied') {
         Notification.requestPermission();
     }
     
-    // تنظیم تاریخ شمسی
     const now = new Date();
     const [jy, jm, jd] = gregorianToJalali(now.getFullYear(), now.getMonth() + 1, now.getDate());
     const weekDays = ['یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنج‌شنبه', 'جمعه', 'شنبه'];
     
-    const dateElement = document.querySelector('.date');
-    const weekdayElement = document.querySelector('.week-day');
-    if (dateElement) dateElement.textContent = `${jy} / ${String(jm).padStart(2, '0')} / ${String(jd).padStart(2, '0')}`;
-    if (weekdayElement) weekdayElement.textContent = weekDays[now.getDay()];
+    const dateEl = document.querySelector('.date');
+    const weekEl = document.querySelector('.week-day');
+    if (dateEl) dateEl.textContent = `${jy} / ${String(jm).padStart(2, '0')} / ${String(jd).padStart(2, '0')}`;
+    if (weekEl) weekEl.textContent = weekDays[now.getDay()];
+
+    setupEventListeners();
     
-    // بارگذاری اولیه
     await loadStats();
     await loadRoutineTasks();
     await loadMovies();
     await loadBooks();
     await loadGitHubCalendar();
     
-    // setup event listeners
-    setupFormListeners();
+    await checkAndResetDailyTasks();
+    startDailyResetChecker();
     
-    // Event Listeners برای تب‌ها
-    const tabs = document.querySelectorAll('.tab');
-    tabs.forEach((tab, index) => {
-        tab.addEventListener('click', () => {
-            if (index === 0) switchTab('routine');
-            else if (index === 1) switchTab('todo');
-        });
-    });
-    
-    // Event Listener برای فیلتر
-    const sortSelect = document.querySelector('.task-sort');
-    if (sortSelect) {
-        sortSelect.addEventListener('change', (e) => {
-            filterTasks(e.target.value);
-        });
-    }
-    
-    // Event Listener برای دکمه START پومودورو
-    const startBtn = document.querySelector('.start-btn');
-    if (startBtn) {
-        startBtn.addEventListener('click', () => {
-            if (isRunning) {
-                stopTimer();
-            } else {
-                startTimer();
-            }
-        });
-    }
-    
-    // Event Listeners برای دکمه‌های پومودورو
-    const pomodoroOptions = document.querySelectorAll('.pomodoro-option');
-    if (pomodoroOptions.length >= 2) {
-        pomodoroOptions[1].addEventListener('click', () => {
-            stopTimer();
-            currentMode = 'work';
-            timerSeconds = 25 * 60;
-            updateTimerDisplay();
-            updatePomodoroUI();
-        });
-        
-        pomodoroOptions[0].addEventListener('click', () => {
-            stopTimer();
-            currentMode = 'rest';
-            timerSeconds = 5 * 60;
-            updateTimerDisplay();
-            updatePomodoroUI();
-        });
-        
-
-        // در انتهای تابع DOMContentLoaded، قبل از console.log('Initialization complete');
-// اعمال فیلتر پیش‌فرض Not Done بعد از بارگذاری تسک‌ها
-const sortSelect = document.querySelector('.task-sort');
-if (sortSelect && sortSelect.value === 'not done') {
-    // کمی تاخیر تا مطمئن شویم تسک‌ها بارگذاری شده‌اند
-    setTimeout(() => {
-        filterTasks('not done');
-    }, 100);
-}
-    }
-    
-    
-    console.log('Initialization complete');
-
-    // قبل از console.log('Initialization complete');
-// شروع چک کردن ریست روزانه
-await checkAndResetDailyTasks();
-startDailyResetChecker();
+    console.log('Initialization complete.');
 });
