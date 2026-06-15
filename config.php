@@ -2,14 +2,49 @@
 header('Content-Type: application/json; charset=utf-8');
 date_default_timezone_set('Asia/Tehran');
 
-$host = 'localhost';
-$dbname = 'routine_manager';
-$username = 'root';
-$password = '';
+$db_file = __DIR__ . '/routine.sqlite';
 
 try {
-    $pdo = new PDO("mysql:host=$host;dbname=$dbname;charset=utf8mb4", $username, $password);
+    $pdo = new PDO("sqlite:$db_file");
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
+    // Initialize tables if they don't exist
+    $pdo->exec("CREATE TABLE IF NOT EXISTS routine_tasks (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        task_name TEXT NOT NULL,
+        is_done INTEGER DEFAULT 0,
+        task_order INTEGER DEFAULT 0,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )");
+
+    $pdo->exec("CREATE TABLE IF NOT EXISTS todo_tasks (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        task_name TEXT NOT NULL,
+        is_done INTEGER DEFAULT 0,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )");
+
+    $pdo->exec("CREATE TABLE IF NOT EXISTS daily_stats (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        stat_date TEXT UNIQUE,
+        completed_count INTEGER DEFAULT 0,
+        total_count INTEGER DEFAULT 0,
+        percentage INTEGER DEFAULT 0
+    )");
+
+    $pdo->exec("CREATE TABLE IF NOT EXISTS movies (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        movie_name TEXT NOT NULL,
+        is_watched INTEGER DEFAULT 0,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )");
+
+    $pdo->exec("CREATE TABLE IF NOT EXISTS books (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        book_name TEXT NOT NULL,
+        is_read INTEGER DEFAULT 0,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )");
 } catch(PDOException $e) {
     die(json_encode(['error' => 'Database connection failed: ' . $e->getMessage()]));
 }

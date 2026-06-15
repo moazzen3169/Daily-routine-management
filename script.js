@@ -252,6 +252,13 @@ async function checkAndResetDailyTasks() {
     const now = new Date();
     const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
     
+    // اگر بار اول است، فقط تاریخ را ذخیره کن
+    if (!lastResetDate) {
+        localStorage.setItem('lastResetDate', today);
+        lastResetDate = today;
+        return;
+    }
+
     // اگر روز عوض شده باشه
     if (lastResetDate !== today) {
         console.log('Day changed! Resetting tasks...');

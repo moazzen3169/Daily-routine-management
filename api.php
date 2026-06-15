@@ -5,13 +5,10 @@ header('Content-Type: application/json; charset=utf-8');
 date_default_timezone_set('Asia/Tehran');
 
 // اتصال به دیتابیس
-$host = 'localhost';
-$dbname = 'routine_manager';
-$username = 'root';
-$password = '';
+$db_file = __DIR__ . '/routine.sqlite';
 
 try {
-    $pdo = new PDO("mysql:host=$host;dbname=$dbname;charset=utf8mb4", $username, $password);
+    $pdo = new PDO("sqlite:$db_file");
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 } catch(PDOException $e) {
     echo json_encode(['error' => 'Database connection failed: ' . $e->getMessage()]);
@@ -26,22 +23,22 @@ $action = $_POST['action'] ?? $_GET['action'] ?? '';
 function updateDailyStats($pdo, $date = null) {
     if (!$date) $date = date('Y-m-d');
     
-    // محاسبه آمار امروز
-    $stmt = $pdo->query("SELECT COUNT(*) as total, SUM(is_done) as done FROM routine_tasks");
+    // محاسبه آمار امروز - فقط تسک‌های روتین
+    $stmt = $pdo->query("SELECT COUNT(*) as total, SUM(CASE WHEN is_done = 1 THEN 1 ELSE 0 END) as done FROM routine_tasks");
     $result = $stmt->fetch(PDO::FETCH_ASSOC);
     
-    $total = $result['total'];
-    $done = $result['done'] ?? 0;
+    $total = (int)($result['total'] ?? 0);
+    $done = (int)($result['done'] ?? 0);
     $percentage = $total > 0 ? round(($done / $total) * 100) : 0;
     
-    // ذخیره در دیتابیس
+    // ذخیره در دیتابیس (SQLite syntax)
     $stmt = $pdo->prepare("
         INSERT INTO daily_stats (stat_date, completed_count, total_count, percentage) 
         VALUES (?, ?, ?, ?)
-        ON DUPLICATE KEY UPDATE 
-        completed_count = VALUES(completed_count),
-        total_count = VALUES(total_count),
-        percentage = VALUES(percentage)
+        ON CONFLICT(stat_date) DO UPDATE SET
+        completed_count = excluded.completed_count,
+        total_count = excluded.total_count,
+        percentage = excluded.percentage
     ");
     $stmt->execute([$date, $done, $total, $percentage]);
     

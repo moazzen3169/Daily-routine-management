@@ -215,6 +215,7 @@ header{
     color: var(--text-primary);
     font-size: 12px;
     margin-top: 15px;
+    padding-right: 20px;
 }
 
 .github-calendar {
@@ -224,6 +225,8 @@ header{
     grid-auto-flow: column;
     gap: 4px;
     height: 130px;
+    width: max-content;
+    padding: 10px;
 }
 
 .calendar-day {
@@ -232,7 +235,7 @@ header{
     border-radius: 2px;
 }
 
-.calendar-day.level-0 { background-color: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); }
+.calendar-day.level-0 { background-color: #161b22; border: 1px solid rgba(255, 255, 255, 0.05); }
 .calendar-day.level-1 { background-color: var(--green-900); }
 .calendar-day.level-2 { background-color: var(--green-800); }
 .calendar-day.level-3 { background-color: var(--green-700); }
