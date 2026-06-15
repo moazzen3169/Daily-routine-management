@@ -345,6 +345,22 @@ if ($action == 'get_stats') {
 // ============================================
 // Monthly Stats
 // ============================================
+} elseif ($action == 'get_calendar_stats') {
+    $days = $_GET['days'] ?? 365;
+    $startDate = date('Y-m-d', strtotime("-$days days"));
+    $today = date('Y-m-d');
+
+    $stmt = $pdo->prepare("
+        SELECT stat_date, percentage, completed_count, total_count
+        FROM daily_stats
+        WHERE stat_date BETWEEN ? AND ?
+        ORDER BY stat_date ASC
+    ");
+    $stmt->execute([$startDate, $today]);
+    $stats = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    echo json_encode(['success' => true, 'stats' => $stats]);
+
 } elseif ($action == 'get_monthly_stats') {
     $year = $_GET['year'] ?? date('Y');
     $month = $_GET['month'] ?? date('m');
@@ -365,6 +381,7 @@ if ($action == 'get_stats') {
         $dayNum = (int)substr($stat['stat_date'], 8, 2);
         $result[] = [
             'jalali_day' => $dayNum,
+            'stat_date' => $stat['stat_date'],
             'percentage' => (int)$stat['percentage'],
             'completed' => (int)$stat['completed_count'],
             'total' => (int)$stat['total_count']

@@ -240,7 +240,7 @@ async function handleRoutineToggle(e) {
             checkbox.checked = !isDone;
         } else {
             await loadStats();
-            await loadMonthlyCalendar();
+            await loadGitHubCalendar();
         }
         
         // ============================================
@@ -249,7 +249,8 @@ async function handleRoutineToggle(e) {
 let lastResetDate = localStorage.getItem('lastResetDate') || '';
 
 async function checkAndResetDailyTasks() {
-    const today = new Date().toISOString().slice(0, 10);
+    const now = new Date();
+    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
     
     // اگر روز عوض شده باشه
     if (lastResetDate !== today) {
@@ -277,7 +278,7 @@ async function checkAndResetDailyTasks() {
                     await loadTodoTasks();
                 }
                 await loadStats();
-                await loadMonthlyCalendar();
+                await loadGitHubCalendar();
                 
                 console.log('Tasks reset successfully for new day!');
                 if (typeof showNotification === 'function') {
@@ -341,7 +342,7 @@ async function handleDeleteRoutine(e) {
         if (result.success) {
             await loadRoutineTasks();
             await loadStats();
-            await loadMonthlyCalendar();
+            await loadGitHubCalendar();
         }
     } catch (error) {
         console.error('Error:', error);
@@ -917,7 +918,7 @@ async function addTaskFromModal() {
             if (currentTab === 'routine') {
                 await loadRoutineTasks();
                 await loadStats();
-                await loadMonthlyCalendar();
+                await loadGitHubCalendar();
             } else {
                 await loadTodoTasks();
             }
@@ -974,57 +975,63 @@ function addTimeFromModal() {
 }
 
 // ============================================
-// تقویم ماهانه
+// تقویم گیتهاب
 // ============================================
-async function loadMonthlyCalendar() {
-    const year = currentMonth.getFullYear();
-    const month = currentMonth.getMonth() + 1;
-    
+async function loadGitHubCalendar() {
     try {
-        const response = await fetch(`api.php?action=get_monthly_stats&year=${year}&month=${month}`);
+        const response = await fetch('api.php?action=get_calendar_stats&days=365');
         const data = await response.json();
         
         if (data.success) {
             const statsMap = {};
             data.stats.forEach(stat => {
-                statsMap[stat.jalali_day] = stat.percentage;
+                statsMap[stat.stat_date] = stat.percentage;
             });
             
-            const daysInMonth = new Date(year, month, 0).getDate();
-            const firstDayOfMonth = new Date(year, month - 1, 1).getDay();
-            
-            const calendarContainer = document.querySelector('.calender');
+            const calendarContainer = document.getElementById('githubCalendar');
             if (!calendarContainer) return;
             
-            // حذف روزهای قبلی (به جز عنوان‌ها)
-            const titles = document.querySelectorAll('.calender-day-title');
             calendarContainer.innerHTML = '';
-            titles.forEach(title => calendarContainer.appendChild(title));
             
-            // روزهای خالی ابتدای ماه
-            for (let i = 0; i < firstDayOfMonth; i++) {
+            const endDate = new Date();
+            const startDate = new Date();
+            startDate.setDate(endDate.getDate() - 364);
+
+            const startDay = startDate.getDay();
+            for (let i = 0; i < startDay; i++) {
                 const emptyDiv = document.createElement('div');
-                emptyDiv.className = 'calender-day-cart level-0';
+                emptyDiv.className = 'calendar-day level-0';
                 calendarContainer.appendChild(emptyDiv);
             }
             
-            // روزهای ماه
-            for (let day = 1; day <= daysInMonth; day++) {
-                const dayDiv = document.createElement('div');
-                const percentage = statsMap[day] || 0;
+            const tempDate = new Date(startDate);
+            while (tempDate <= endDate) {
+                const dateStr = `${tempDate.getFullYear()}-${String(tempDate.getMonth() + 1).padStart(2, '0')}-${String(tempDate.getDate()).padStart(2, '0')}`;
+                const percentage = statsMap[dateStr] || 0;
+
                 let level = 0;
                 if (percentage > 0 && percentage < 25) level = 1;
                 else if (percentage >= 25 && percentage < 50) level = 2;
                 else if (percentage >= 50 && percentage < 75) level = 3;
                 else if (percentage >= 75) level = 4;
                 
-                dayDiv.className = `calender-day-cart level-${level}`;
-                dayDiv.title = `Day ${day}: ${percentage}% completed`;
+                const dayDiv = document.createElement('div');
+                dayDiv.className = `calendar-day level-${level}`;
+
+                const [jy, jm, jd] = gregorianToJalali(tempDate.getFullYear(), tempDate.getMonth() + 1, tempDate.getDate());
+                dayDiv.title = `${jy}/${jm}/${jd} : ${percentage}%`;
+
                 calendarContainer.appendChild(dayDiv);
+                tempDate.setDate(tempDate.getDate() + 1);
+            }
+
+            const wrapper = document.querySelector('.calendar-wrapper');
+            if (wrapper) {
+                wrapper.scrollLeft = wrapper.scrollWidth;
             }
         }
     } catch (error) {
-        console.error('Error loading monthly calendar:', error);
+        console.error('Error loading github calendar:', error);
     }
 }
 
@@ -1282,7 +1289,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // تنظیم تاریخ شمسی
     const now = new Date();
     const [jy, jm, jd] = gregorianToJalali(now.getFullYear(), now.getMonth() + 1, now.getDate());
-    const weekDays = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const weekDays = ['یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنج‌شنبه', 'جمعه', 'شنبه'];
     
     const dateElement = document.querySelector('.date');
     const weekdayElement = document.querySelector('.week-day');
@@ -1294,7 +1301,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     await loadRoutineTasks();
     await loadMovies();
     await loadBooks();
-    await loadMonthlyCalendar();
+    await loadGitHubCalendar();
     
     // setup event listeners
     setupFormListeners();
