@@ -59,35 +59,30 @@
             </div>
         </article>
 
-        <div class="user-calender">
+        <div class="user-calender" style="grid-column: 1/13; height: auto;">
             <div class="calender-head">
                 <img src="assets/Calendar.svg" alt="calender">
-                <span>Monthly Calendar</span>
+                <span>Routine Progress (GitHub Style)</span>
             </div>
 
-            <div class="calender">
-                <div class="calender-day-title">SU</div>
-                <div class="calender-day-title">MO</div>
-                <div class="calender-day-title">TU</div>
-                <div class="calender-day-title">WE</div>
-                <div class="calender-day-title">TH</div>
-                <div class="calender-day-title">FR</div>
-                <div class="calender-day-title">SA</div>
-                <!-- 35 روز برای تقویم (حداکثر) - توسط JS پر می‌شوند -->
+            <div class="calendar-wrapper" style="overflow-x: auto; padding-bottom: 10px;">
+                <div class="github-calendar" id="githubCalendar">
+                    <!-- GitHub style calendar will be generated here -->
+                </div>
             </div>
+
             <div class="calender-info">
+                <span>Less</span>
+                <div class="calender-day-cart levelCL-0"></div>
                 <div class="calender-day-cart levelCL-1"></div>
-                <span>low</span>
                 <div class="calender-day-cart levelCL-2"></div>
-                <span>medium</span>
                 <div class="calender-day-cart levelCL-3"></div>
-                <span>good</span>
                 <div class="calender-day-cart levelCL-4"></div>
-                <span>great</span>
+                <span>More</span>
             </div>
         </div>
 
-        <div class="tasks-container">
+        <div class="tasks-container" style="grid-column: 1/9;">
             <!-- قسمت tasks-container-head را پیدا کن (حدود خط 85-95) -->
             <div class="tasks-container-head">
                 <select class="task-sort">
@@ -109,11 +104,11 @@
             </div>
         </div>
         
-        <div class="pomodoro">
+        <div class="pomodoro" style="grid-column: 9/13;">
             <div class="pomodoro-head">
                 <button class="pomodoro-option op-active">Rest</button>
                 <button class="pomodoro-option">Work</button>
-                <div class="pomodoro-time">11:58</div>
+                <div class="pomodoro-time">00:00</div>
             </div>
             <div class="pomodoro-main">
                 <div class="timer">25:00</div>
